@@ -7,5 +7,7 @@ object ClientRegistryActor {
 }
 
 class ClientRegistryActor extends Actor with ActorLogging {
-  override def receive: Receive = ???
+  override def receive: Receive = {
+    case _ =>
+  }
 }
