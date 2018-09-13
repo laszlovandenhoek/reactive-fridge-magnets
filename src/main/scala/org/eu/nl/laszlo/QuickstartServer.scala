@@ -18,7 +18,7 @@ object QuickstartServer extends App with FridgeRoutes {
 
   private val clientRegistryActor: ActorRef = system.actorOf(ClientRegistryActor.props)
 
-  val sessionsActor: ActorRef = system.actorOf(FridgeActor.props(clientRegistryActor), "sessionsActor")
+  val sessionsActor: ActorRef = system.actorOf(FridgeActor.props(clientRegistryActor), "sessions-actor")
 
   // from the FridgeRoutes trait
   lazy val routes: Route = userRoutes
