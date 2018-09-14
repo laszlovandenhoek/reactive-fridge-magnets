@@ -1,22 +1,14 @@
-package org.eu.nl.laszlo
+package org.eu.nl.laszlo.rfm
 
-import akka.actor.{ ActorRef, ActorSystem }
+import akka.actor.{ActorRef, ActorSystem}
 import akka.event.Logging
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.directives.RouteDirectives.complete
+import akka.util.Timeout
 
 import scala.concurrent.duration._
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.server.directives.MethodDirectives.delete
-import akka.http.scaladsl.server.directives.MethodDirectives.get
-import akka.http.scaladsl.server.directives.MethodDirectives.post
-import akka.http.scaladsl.server.directives.RouteDirectives.complete
-import akka.http.scaladsl.server.directives.PathDirectives.path
-
-import scala.concurrent.Future
-import org.eu.nl.laszlo.FridgeActor._
-import akka.pattern.ask
-import akka.util.Timeout
 
 trait FridgeRoutes extends JsonSupport {
 

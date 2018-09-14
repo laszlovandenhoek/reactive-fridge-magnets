@@ -1,13 +1,14 @@
-package org.eu.nl.laszlo
+package org.eu.nl.laszlo.rfm
 
-import akka.actor.{ ActorRef, ActorSystem }
+import akka.actor.{ActorRef, ActorSystem}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Route
 import akka.stream.ActorMaterializer
+import org.eu.nl.laszlo.rfm.actor.{ClientRegistryActor, FridgeActor}
 
 import scala.concurrent.duration.Duration
-import scala.concurrent.{ Await, ExecutionContext, Future }
-import scala.util.{ Failure, Success }
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 object QuickstartServer extends App with FridgeRoutes {
 

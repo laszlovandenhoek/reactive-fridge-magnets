@@ -1,4 +1,4 @@
-package org.eu.nl.laszlo
+package org.eu.nl.laszlo.rfm
 
 //#user-routes-spec
 //#test-top
@@ -8,6 +8,8 @@ import akka.actor.ActorRef
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import org.eu.nl.laszlo.rfm.actor.ClientRegistryActor.ConnectedClient
+import org.eu.nl.laszlo.rfm.actor.FridgeActor
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{Matchers, WordSpec}
 

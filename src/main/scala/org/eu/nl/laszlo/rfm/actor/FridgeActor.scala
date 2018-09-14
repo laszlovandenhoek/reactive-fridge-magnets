@@ -1,20 +1,20 @@
-package org.eu.nl.laszlo
+package org.eu.nl.laszlo.rfm.actor
 
 import java.util.UUID
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 
-object Magnet {
-  def apply(text: CharSequence): Magnet = {
-    Magnet(UUID.randomUUID(), text.toString)
-  }
-}
-
-final case class Magnet(handle: UUID, text: String)
-
-final case class Point(x: Int, y: Int)
-
 object FridgeActor {
+
+  object Magnet {
+    def apply(text: CharSequence): Magnet = {
+      Magnet(UUID.randomUUID(), text.toString)
+    }
+  }
+
+  final case class Magnet(handle: UUID, text: String)
+
+  final case class Point(x: Int, y: Int)
 
   final val canvasSizeHorizontal: Int = 1000
   final val canvasSizeVertical: Int = 1000
