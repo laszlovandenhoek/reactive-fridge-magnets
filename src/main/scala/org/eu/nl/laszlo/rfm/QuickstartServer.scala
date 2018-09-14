@@ -20,7 +20,7 @@ object QuickstartServer extends App with FridgeWebSocketRequestHandler {
 
   val sessionsActor: ActorRef = system.actorOf(FridgeActor.props(clientRegistryActor), "sessions-actor")
 
-  private val serverBinding: Future[Http.ServerBinding] = Http().bindAndHandleSync(handleRequest, "localhost", 8080)
+  private val serverBinding: Future[Http.ServerBinding] = Http().bindAndHandleSync(handleRequest, "0.0.0.0", 8080)
 
   serverBinding.onComplete {
     case Success(bound) =>
