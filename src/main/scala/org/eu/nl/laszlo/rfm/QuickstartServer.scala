@@ -24,7 +24,7 @@ object QuickstartServer extends App with FridgeWebSocketRequestHandler {
 
   serverBinding.onComplete {
     case Success(bound) =>
-      counter //start the ~~fridge~~ counter
+      fridgeBroadcast //start the ~~fridge~~ counter
       println(s"Server online at http://${bound.localAddress.getHostString}:${bound.localAddress.getPort}/")
     case Failure(e) =>
       Console.err.println(s"Server could not start!")
