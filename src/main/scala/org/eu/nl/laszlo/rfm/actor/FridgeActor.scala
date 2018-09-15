@@ -8,11 +8,12 @@ object FridgeActor {
 
   object Magnet {
     def apply(text: CharSequence): Magnet = {
-      Magnet(UUID.randomUUID(), text.toString)
+      val uuid = UUID.randomUUID()
+      Magnet((uuid.getMostSignificantBits, uuid.getLeastSignificantBits), text.toString)
     }
   }
 
-  final case class Magnet(handle: UUID, text: String)
+  final case class Magnet(handle: (Long,Long), text: String)
 
   final case class Point(x: Int, y: Int)
 
@@ -41,7 +42,7 @@ object FridgeActor {
   //responses
   final case class NewState(positions: Map[Magnet, Point], partial: Boolean)
 
-  final case class MagnetGrabbed(magnet: Magnet, grabber: ActorRef) //TODO: this could be a typed ActorRef, I think
+  final case class MagnetGrabbed(magnet: Magnet, grabber: String) //TODO: this could be a typed ActorRef, I think
 
   final case class MagnetReleased(magnet: Magnet)
 
@@ -52,8 +53,11 @@ class FridgeActor(clientRegistry: ActorRef) extends Actor with ActorLogging {
   import FridgeActor._
 
   val magnets: Set[Magnet] = createMagnets()
-  var draggers: Map[ActorRef, Magnet] = Map.empty
+  var draggers: Map[String, Magnet] = Map.empty
   var positions: Map[Magnet, Point] = magnets.map(m => (m, Point(0, 0))).toMap
+
+  //not sure how clients will be represented so keeping this one around for now
+  implicit private def actorRefToString(actorRef: ActorRef): String = actorRef.path.name
 
   def receive: Receive = {
     case GetFullState =>

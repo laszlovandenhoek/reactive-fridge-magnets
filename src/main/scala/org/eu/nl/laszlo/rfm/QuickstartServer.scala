@@ -16,9 +16,9 @@ object QuickstartServer extends App with FridgeWebSocketRequestHandler {
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContext = system.dispatcher
 
-  private val clientRegistryActor: ActorRef = system.actorOf(ClientRegistryActor.props)
+  val clientRegistryActor: ActorRef = system.actorOf(ClientRegistryActor.props, name = "client-registry")
 
-  val sessionsActor: ActorRef = system.actorOf(FridgeActor.props(clientRegistryActor), "sessions-actor")
+  private val fridgeActor: ActorRef = system.actorOf(FridgeActor.props(clientRegistryActor), "fridge")
 
   private val serverBinding: Future[Http.ServerBinding] = Http().bindAndHandleSync(handleRequest, "0.0.0.0", 8080)
 

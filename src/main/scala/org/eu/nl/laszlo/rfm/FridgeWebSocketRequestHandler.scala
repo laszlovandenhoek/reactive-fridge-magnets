@@ -8,9 +8,10 @@ import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.ws.{TextMessage, UpgradeToWebSocket}
 import akka.stream.Attributes.logLevels
+import akka.stream.scaladsl.{BroadcastHub, Sink, Source}
 import akka.stream.{Materializer, OverflowStrategy}
-import akka.stream.scaladsl.{Broadcast, BroadcastHub, Sink, Source}
 import akka.util.Timeout
+import org.eu.nl.laszlo.rfm.actor.ConnectedClientActor
 
 import scala.concurrent.duration._
 
@@ -24,7 +25,7 @@ trait FridgeWebSocketRequestHandler extends JsonSupport {
   lazy val log = Logging(system, classOf[FridgeWebSocketRequestHandler])
 
   // other dependencies that UserRoutes use
-  def sessionsActor: ActorRef
+  def clientRegistryActor: ActorRef
 
   // Required by the `ask` (?) method below
   implicit lazy val timeout = Timeout(5.seconds) // usually we'd obtain the timeout from the system's configuration
@@ -44,7 +45,10 @@ trait FridgeWebSocketRequestHandler extends JsonSupport {
     case req@HttpRequest(GET, Uri.Path("/rfm"), _, _, _) =>
       req.header[UpgradeToWebSocket] match {
         case Some(upgrade) =>
-          upgrade.handleMessagesWithSinkSource(Sink.foreach(println), fridgeBroadcast.merge(clientTicker))
+          val clientActor: ActorRef = system.actorOf(ConnectedClientActor.props)
+          val actorSink = Sink.actorRefWithAck(clientActor, NotUsed, NotUsed, NotUsed)
+          //TODO: actorSink properly implemented, use in place of Sink below. But how will we deser the input?
+          upgrade.handleMessagesWithSinkSource(Sink.foreach(println), fridgeBroadcast.merge(clientTicker, eagerComplete = true))
         case None => HttpResponse(400, entity = "Not a valid websocket request!")
       }
     case r: HttpRequest =>
