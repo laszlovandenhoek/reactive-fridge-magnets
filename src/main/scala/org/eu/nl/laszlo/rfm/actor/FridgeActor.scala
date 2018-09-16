@@ -73,7 +73,7 @@ class FridgeActor(clientRegistry: ActorRef) extends Actor with ActorLogging {
         case (None, Some(otherMagnet)) => //client is already dragging a different magnet, but this magnet is free
           log.warning("{} was already dragging {}; switching to {}", client, otherMagnet, magnet)
           setDragger(client, magnet)
-        case (Some(`client`), Some(`magnet`)) => //client is already dragging this magnet
+        case (Some(dragger), Some(`magnet`)) if dragger == actorRefToString(client) => //client is already dragging this magnet
           client ! MagnetGrabbed(magnet, client) //no need for a separate case object AlreadyDragging, just a friendly reminder
         case (Some(otherClient), _) => //some other bastard got it first :(
           client ! MagnetGrabbed(magnet, otherClient)
