@@ -1,7 +1,6 @@
 package org.eu.nl.laszlo.rfm
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import org.eu.nl.laszlo.rfm.actor.FridgeActor._
 import spray.json.{DefaultJsonProtocol, JsonFormat}
 
 trait JsonSupport extends SprayJsonSupport {

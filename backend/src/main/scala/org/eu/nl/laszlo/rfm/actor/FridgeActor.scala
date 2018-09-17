@@ -1,21 +1,9 @@
 package org.eu.nl.laszlo.rfm.actor
 
-import java.util.UUID
-
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
+import org.eu.nl.laszlo.rfm._
 
 object FridgeActor {
-
-  object Magnet {
-    def apply(text: CharSequence): Magnet = {
-      val uuid = UUID.randomUUID()
-      Magnet((uuid.getMostSignificantBits, uuid.getLeastSignificantBits), text.toString)
-    }
-  }
-
-  final case class Magnet(handle: (Long,Long), text: String)
-
-  final case class Point(x: Int, y: Int)
 
   final val canvasSizeHorizontal: Int = 1000
   final val canvasSizeVertical: Int = 1000
@@ -29,22 +17,6 @@ object FridgeActor {
       point.y >= 0 && point.y < canvasSizeVertical
 
   def props(clientRegistry: ActorRef): Props = Props[FridgeActor](new FridgeActor(clientRegistry))
-
-  //requests
-  final case object GetFullState
-
-  final case class GrabMagnet(magnet: Magnet)
-
-  final case class DragMagnet(magnet: Magnet, toPoint: Point)
-
-  final case class ReleaseMagnet(magnet: Magnet)
-
-  //responses
-  final case class NewState(positions: Map[Magnet, Point], partial: Boolean)
-
-  final case class MagnetGrabbed(magnet: Magnet, grabber: String) //TODO: this could be a typed ActorRef, I think
-
-  final case class MagnetReleased(magnet: Magnet)
 
 }
 
