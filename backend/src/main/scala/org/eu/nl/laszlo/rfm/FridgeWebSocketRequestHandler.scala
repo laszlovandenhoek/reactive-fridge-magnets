@@ -3,10 +3,8 @@ package org.eu.nl.laszlo.rfm
 import akka.NotUsed
 import akka.actor.{ActorRef, ActorSystem, Cancellable}
 import akka.event.Logging
-import akka.event.Logging.InfoLevel
 import akka.http.scaladsl.model.ws.TextMessage
 import akka.http.scaladsl.server.Directives
-import akka.stream.Attributes.logLevels
 import akka.stream.Materializer
 import akka.stream.scaladsl.{BroadcastHub, Flow, Sink, Source}
 import akka.util.Timeout
@@ -32,8 +30,7 @@ trait FridgeWebSocketRequestHandler extends JsonSupport with Directives {
 
   lazy val fridgeBroadcast: Source[TextMessage.Strict, NotUsed] = ticker
     .map(tick => TextMessage(s"Server tick $tick"))
-    .log("tick").withAttributes(logLevels(onElement = InfoLevel))
-    .runWith(BroadcastHub.sink)
+    .runWith(BroadcastHub.sink(1))
 
   private val clientTicker = ticker
     .map(tick => TextMessage(s"Client tick $tick"))
@@ -47,6 +44,7 @@ trait FridgeWebSocketRequestHandler extends JsonSupport with Directives {
         // so that's where we pick them up
         path("frontend-launcher.js")(getFromResource("frontend-launcher.js")) ~
         path("frontend-fastopt.js")(getFromResource("frontend-fastopt.js")) ~
+        path("frontend-fastopt-bundle.js")(getFromResource("frontend-fastopt-bundle.js")) ~
         path("rfm") {
           handleWebSocketMessages(Flow.fromSinkAndSource(Sink.foreach(println), fridgeBroadcast.merge(clientTicker, eagerComplete = true)))
         }

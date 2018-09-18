@@ -29,13 +29,13 @@ lazy val backend = (project in file("backend"))
       "org.scalatest" %% "scalatest" % "3.0.5" % Test
     ),
 
-    scalaJSUseMainModuleInitializer := true,
+//    scalaJSUseMainModuleInitializer := true,
 
     //TODO: understand what this means
     resourceGenerators in Compile += Def.task {
       val f1 = (fastOptJS in Compile in frontend).value
-//      val f2 = (webpack in(frontend, Compile, fastOptJS in frontend)).value
-      Seq(f1.data)
+      val f2 = (packageScalaJSLauncher in Compile in frontend).value
+      Seq(f1.data, f2.data)
     }.taskValue,
 
     watchSources ++= (watchSources in frontend).value
@@ -44,18 +44,23 @@ lazy val backend = (project in file("backend"))
 
 lazy val frontend = (project in file("frontend"))
   .enablePlugins(ScalaJSPlugin)
-//  .enablePlugins(ScalaJSBundlerPlugin)
+  //  .enablePlugins(ScalaJSBundlerPlugin)
   .settings(commonSettings: _*)
   .settings(
 
     name := "frontend",
 
-//    npmDependencies in Compile ++= Seq(
-//      "react" -> "16.5.1",
-//      "react-dom" -> "16.5.1"),
+    persistLauncher in Compile := true,
+    persistLauncher in Test := false,
+
+    //    npmDependencies in Compile ++= Seq(
+    //      "react" -> "16.5.1",
+    //      "react-dom" -> "16.5.1"),
 
     libraryDependencies ++= Seq(
-      "com.github.japgolly.scalajs-react" %%% "core" % "1.3.0"
+      "com.github.japgolly.scalajs-react" %%% "core" % "1.3.0",
+      "io.scalajs" %%% "dom-html" % "0.4.2",
+      "org.scala-js" %%% "scalajs-dom" % "0.9.6"
     )
 
   ).dependsOn(shared.js)

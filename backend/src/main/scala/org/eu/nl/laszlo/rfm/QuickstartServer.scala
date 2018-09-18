@@ -1,8 +1,11 @@
 package org.eu.nl.laszlo.rfm
 
 import akka.actor.{ActorRef, ActorSystem}
+import akka.event.Logging.InfoLevel
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
+import akka.stream.Attributes.logLevels
+import akka.stream.scaladsl.Sink
 import org.eu.nl.laszlo.rfm.actor.{ClientRegistryActor, FridgeActor}
 
 import scala.concurrent.duration.Duration
@@ -24,7 +27,10 @@ object QuickstartServer extends App with FridgeWebSocketRequestHandler {
 
   serverBinding.onComplete {
     case Success(bound) =>
-      fridgeBroadcast //start the ~~fridge~~ counter
+      //keep on pullin'
+      fridgeBroadcast
+        .log("tick").withAttributes(logLevels(onElement = InfoLevel))
+        .runWith(Sink.ignore)
       println(s"Server online at http://${bound.localAddress.getHostString}:${bound.localAddress.getPort}/")
     case Failure(e) =>
       Console.err.println(s"Server could not start!")
