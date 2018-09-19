@@ -5,7 +5,7 @@ import java.util.UUID
 
 object ConnectedClientActor {
 
-  //TODO: it would be easier if this were a chield of ClientRegistryActor
+  //TODO: it would be easier if this were a child of ClientRegistryActor
 
   def props: Props = Props[ConnectedClientActor](new ConnectedClientActor(UUID.randomUUID()))
 }

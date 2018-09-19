@@ -3,6 +3,8 @@ package org.eu.nl.laszlo.rfm.actor
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import org.eu.nl.laszlo.rfm.Protocol._
 
+import scala.concurrent.duration._
+
 object FridgeActor {
 
   final val canvasSizeHorizontal: Int = 1000
@@ -27,6 +29,10 @@ class FridgeActor(clientRegistry: ActorRef) extends Actor with ActorLogging {
   val magnets: Set[Magnet] = createMagnets()
   var draggers: Map[String, Magnet] = Map.empty
   var positions: Map[Magnet, Point] = magnets.map(m => (m, Point(0, 0))).toMap
+
+  override def preStart(): Unit = {
+    context.system.scheduler.schedule(1.seconds, 1.seconds)(self.tell(GetFullState, clientRegistry))(context.dispatcher)
+  }
 
   //not sure how clients will be represented so keeping this one around for now
   implicit private def actorRefToString(actorRef: ActorRef): String = actorRef.path.name

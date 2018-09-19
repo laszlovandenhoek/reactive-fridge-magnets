@@ -1,13 +1,13 @@
 package org.eu.nl.laszlo.rfm.actor
 
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 
 object ClientRegistryActor {
-  def props: Props = Props[ClientRegistryActor]
+  def props(broadcast: ActorRef): Props = Props(new ClientRegistryActor(broadcast))
 }
 
-class ClientRegistryActor extends Actor with ActorLogging {
+class ClientRegistryActor(broadcast: ActorRef) extends Actor with ActorLogging {
   override def receive: Receive = {
-    case _ =>
+    case msg => broadcast ! msg
   }
 }
