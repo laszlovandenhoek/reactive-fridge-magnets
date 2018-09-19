@@ -1,5 +1,6 @@
 // shadow sbt-scalajs' crossProject and CrossType from Scala.js 0.6.x
-import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
+import sbt.Def
+import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
 lazy val akkaHttpVersion = "10.1.5"
 lazy val akkaVersion = "2.5.16"
@@ -29,37 +30,31 @@ lazy val backend = (project in file("backend"))
       "org.scalatest" %% "scalatest" % "3.0.5" % Test
     ),
 
-//    scalaJSUseMainModuleInitializer := true,
-
     //TODO: understand what this means
     resourceGenerators in Compile += Def.task {
-      val f1 = (fastOptJS in Compile in frontend).value
-      val f2 = (packageScalaJSLauncher in Compile in frontend).value
-      Seq(f1.data, f2.data)
+      (webpack in(frontend, Compile, fastOptJS in frontend)).value.map(_.data)
     }.taskValue,
 
     watchSources ++= (watchSources in frontend).value
 
-  ).dependsOn(shared.jvm)
+  )
+  .dependsOn(shared.jvm)
 
 lazy val frontend = (project in file("frontend"))
-  .enablePlugins(ScalaJSPlugin)
-  //  .enablePlugins(ScalaJSBundlerPlugin)
+  .enablePlugins(ScalaJSPlugin, ScalaJSBundlerPlugin)
   .settings(commonSettings: _*)
   .settings(
 
     name := "frontend",
 
-    persistLauncher in Compile := true,
-    persistLauncher in Test := false,
+    scalaJSUseMainModuleInitializer := true,
 
-    //    npmDependencies in Compile ++= Seq(
-    //      "react" -> "16.5.1",
-    //      "react-dom" -> "16.5.1"),
+    npmDependencies in Compile ++= Seq(
+      "react" -> "16.5.1",
+      "react-dom" -> "16.5.1"),
 
     libraryDependencies ++= Seq(
       "com.github.japgolly.scalajs-react" %%% "core" % "1.3.0",
-      "io.scalajs" %%% "dom-html" % "0.4.2",
       "org.scala-js" %%% "scalajs-dom" % "0.9.6"
     )
 

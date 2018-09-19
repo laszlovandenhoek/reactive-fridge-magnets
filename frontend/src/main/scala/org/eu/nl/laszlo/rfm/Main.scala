@@ -1,13 +1,10 @@
 package org.eu.nl.laszlo.rfm
 
 import org.scalajs.dom
-import dom.document
-import dom.console
+import org.scalajs.dom.{Document, console, document}
 
-import scala.scalajs.js
-
-object Main extends js.JSApp {
-  def main(): Unit = {
+object Main {
+  def main(args: Array[String]): Unit = {
     console.info("hello world!")
     appendPar(document.body, "Hello World")
   }
@@ -18,4 +15,11 @@ object Main extends js.JSApp {
     parNode.appendChild(textNode)
     targetNode.appendChild(parNode)
   }
+
+  def getWebsocketUri(document: Document, nameOfChatParticipant: String): String = {
+    val wsProtocol = if (dom.document.location.protocol == "https:") "wss" else "ws"
+
+    s"$wsProtocol://${dom.document.location.host}/chat?name=$nameOfChatParticipant"
+  }
+
 }

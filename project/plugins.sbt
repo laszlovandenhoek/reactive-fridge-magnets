@@ -1,7 +1,7 @@
 addSbtPlugin("io.spray" % "sbt-revolver" % "0.9.1")
 
 // https://scalacenter.github.io/scalajs-bundler/
-//addSbtPlugin("ch.epfl.scala" % "sbt-scalajs-bundler" % "0.13.1")
+addSbtPlugin("ch.epfl.scala" % "sbt-scalajs-bundler" % "0.13.1")
 
 // http://www.scala-js.org/tutorial/basic/
 // https://github.com/portable-scala/sbt-crossproject
