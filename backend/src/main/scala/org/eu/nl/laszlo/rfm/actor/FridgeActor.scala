@@ -1,7 +1,7 @@
 package org.eu.nl.laszlo.rfm.actor
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
-import org.eu.nl.laszlo.rfm._
+import org.eu.nl.laszlo.rfm.Protocol._
 
 object FridgeActor {
 

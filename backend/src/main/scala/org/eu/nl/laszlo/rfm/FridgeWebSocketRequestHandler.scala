@@ -4,14 +4,17 @@ import akka.NotUsed
 import akka.actor.{ActorRef, ActorSystem, Cancellable}
 import akka.event.Logging
 import akka.http.scaladsl.model.ws.TextMessage
-import akka.http.scaladsl.server.Directives
+import akka.http.scaladsl.server.{Directives, Route}
 import akka.stream.Materializer
 import akka.stream.scaladsl.{BroadcastHub, Flow, Sink, Source}
 import akka.util.Timeout
+import de.heikoseeberger.akkahttpupickle.UpickleSupport
+import org.eu.nl.laszlo.rfm.Protocol.NewState
+import upickle.default._
 
 import scala.concurrent.duration._
 
-trait FridgeWebSocketRequestHandler extends JsonSupport with Directives {
+trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
 
   // we leave these abstract, since they will be provided by the App
   implicit def system: ActorSystem
@@ -29,13 +32,13 @@ trait FridgeWebSocketRequestHandler extends JsonSupport with Directives {
   private val ticker: Source[Int, Cancellable] = Source.tick(1.second, 1.second, 1).scan(0)(_ + _)
 
   lazy val fridgeBroadcast: Source[TextMessage.Strict, NotUsed] = ticker
-    .map(tick => TextMessage(s"Server tick $tick"))
+    .map(_ => TextMessage(write(NewState(Map.empty, partial = false))))
     .runWith(BroadcastHub.sink(1))
 
   private val clientTicker = ticker
-    .map(tick => TextMessage(s"Client tick $tick"))
+    .map(_ => TextMessage(write(NewState(Map.empty, partial = true))))
 
-  def route =
+  def route: Route =
     get {
       pathSingleSlash {
         getFromResource("web/index.html")
