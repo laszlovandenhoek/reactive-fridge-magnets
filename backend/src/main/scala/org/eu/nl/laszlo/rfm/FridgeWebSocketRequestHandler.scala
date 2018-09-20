@@ -1,15 +1,16 @@
 package org.eu.nl.laszlo.rfm
 
 import akka.NotUsed
-import akka.actor.{ActorRef, ActorSystem, Cancellable, PoisonPill}
+import akka.actor.{ActorRef, ActorSystem, PoisonPill}
 import akka.event.Logging
 import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage}
 import akka.http.scaladsl.server.{Directives, Route}
-import akka.stream.scaladsl.{BroadcastHub, Flow, Keep, MergeHub, Sink, Source}
-import akka.stream.{Materializer, OverflowStrategy}
+import akka.stream._
+import akka.stream.scaladsl.{BroadcastHub, Concat, Flow, GraphDSL, Keep, MergeHub, Sink, Source}
 import de.heikoseeberger.akkahttpupickle.UpickleSupport
-import org.eu.nl.laszlo.rfm.Protocol.NewState
-import org.eu.nl.laszlo.rfm.actor.{ClientRegistryActor, FridgeActor}
+import org.eu.nl.laszlo.rfm.Protocol.Response
+import org.eu.nl.laszlo.rfm.actor.ClientRegistryActor
+import org.eu.nl.laszlo.rfm.actor.ClientRegistryActor.ClientConnected
 import upickle.default._
 
 import scala.concurrent.duration._
@@ -28,32 +29,31 @@ trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
 
   def route: Route = {
 
-    val (outActor, fridgeBroadcast): (ActorRef, Source[TextMessage, NotUsed]) =
+    val (outActor, fridgeBroadcast): (ActorRef, Source[Response, NotUsed]) =
       Source.actorRef[Protocol.Response](256, OverflowStrategy.dropTail)
-        .map(response => TextMessage(write(response))) //TODO: to be able to conflate efficiently, we need to serialize later.
         .toMat(BroadcastHub.sink(1))(Keep.both)
         .run()
 
     val clientRegistryActor: ActorRef = system.actorOf(ClientRegistryActor.props(outActor), name = "client-registry")
 
-    val fridgeActor: ActorRef = system.actorOf(FridgeActor.props(clientRegistryActor), "fridge")
+    def wsToInternalProtocol(message: Message): Future[Protocol.InternalProtocol] = message match {
+      case tm: TextMessage => tm.toStrict(10.seconds).map(t => read[Protocol.Request](t.text))
+      case bm: BinaryMessage =>
+        // consume the stream
+        bm.dataStream.runWith(Sink.ignore)
+        Future.failed(new Exception("yuck"))
+    }
 
-    val fanIn = Sink.actorRef(fridgeActor, PoisonPill)
-      .runWith(
-        MergeHub.source[Message]
-          .mapAsync(1) {
-            case tm: TextMessage => tm.toStrict(10.seconds).map(t => read[Protocol.Request](t.text))
-            case bm: BinaryMessage =>
-              // consume the stream
-              bm.dataStream.runWith(Sink.ignore)
-              Future.failed(new Exception("yuck"))
-          }
-      )
+    val fanIn: Sink[Protocol.InternalProtocol, NotUsed] = MergeHub.source[Protocol.InternalProtocol].to(Sink.actorRef(clientRegistryActor, PoisonPill)).run()
 
-    val ticker: Source[Int, Cancellable] = Source.tick(1.second, 1.second, 1).scan(0)(_ + _)
-
-    val clientTicker = ticker
-      .map(_ => TextMessage(write(NewState(Map.empty, partial = true))))
+    def startWith[T](elem: T) = Flow.fromGraph(
+      GraphDSL.create() { implicit builder =>
+        import GraphDSL.Implicits._
+        val concat = builder.add(Concat[T]())
+        Source.single(elem) ~> concat.in(0)
+        FlowShape.of(concat.in(1), concat.out)
+      }
+    )
 
     get {
       pathSingleSlash {
@@ -64,7 +64,21 @@ trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
         path("frontend-fastopt-bundle.js")(getFromResource("frontend-fastopt-bundle.js")) ~
         // the websocket
         path("rfm") {
-          handleWebSocketMessages(Flow.fromSinkAndSource(fanIn, fridgeBroadcast.merge(clientTicker, eagerComplete = true)))
+          parameter('name) { name =>
+            val (queue, source) = Source.queue[Response](1, overflowStrategy = OverflowStrategy.fail).preMaterialize()
+
+            val in: Sink[Message, NotUsed] =
+              Flow[Message].mapAsync(1)(wsToInternalProtocol)
+                .via(
+                  startWith(ClientConnected(name, queue)))
+                .to(fanIn)
+
+            val out: Source[Message, NotUsed] =
+              fridgeBroadcast.merge(source, eagerComplete = true).map(response => TextMessage(write(response)))
+
+            handleWebSocketMessages(Flow.fromSinkAndSource(in, out))
+
+          }
         }
     } ~ getFromResourceDirectory("web")
   }

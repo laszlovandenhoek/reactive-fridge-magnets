@@ -7,16 +7,15 @@ import scala.concurrent.duration._
 
 object FridgeActor {
 
-  final val canvasSizeHorizontal: Int = 1000
-  final val canvasSizeVertical: Int = 1000
+  private final val canvas: Square = Square(Point.origin, Point(1000, 1000))
 
   private def createMagnets(): Set[Magnet] = {
-    Set('a' to 'z').map(Magnet.apply(_))
+    (for {
+      char <- 'a' to 'z'
+    } yield {
+      Magnet.apply(1, char.toString)
+    }).toSet
   }
-
-  private def withinBounds(point: Point): Boolean =
-    point.x >= 0 && point.x < canvasSizeHorizontal &&
-      point.y >= 0 && point.y < canvasSizeVertical
 
   def props(clientRegistry: ActorRef): Props = Props[FridgeActor](new FridgeActor(clientRegistry))
 
@@ -26,18 +25,31 @@ class FridgeActor(clientRegistry: ActorRef) extends Actor with ActorLogging {
 
   import FridgeActor._
 
-  val magnets: Set[Magnet] = createMagnets()
-  var draggers: Map[String, Magnet] = Map.empty
-  var positions: Map[Magnet, Point] = magnets.map(m => (m, Point(0, 0))).toMap
+  private val magnets: Set[Magnet] = createMagnets()
 
   override def preStart(): Unit = {
-    context.system.scheduler.schedule(1.seconds, 1.seconds)(self.tell(GetFullState, clientRegistry))(context.dispatcher)
+    context.system.scheduler.schedule(1.second, 1.second) {
+      self.tell(GetFullState, clientRegistry)
+    }(context.dispatcher)
+
+    context.system.scheduler.schedule(1.second, 1.second) {
+      val pickedMagnet = magnets.head //TODO: more random
+      self ! GrabMagnet(pickedMagnet)
+      self ! DragMagnet(pickedMagnet, canvas.randomPointWithin())
+      self ! ReleaseMagnet
+    }(context.dispatcher)
+
   }
 
-  //not sure how clients will be represented so keeping this one around for now
+  import scala.language.implicitConversions
   implicit private def actorRefToString(actorRef: ActorRef): String = actorRef.path.name
 
-  def receive: Receive = {
+  def receive: Receive = receive(
+    draggers = Map.empty,
+    positions = magnets.map(m => (m, canvas.randomPointWithin())).toMap
+  )
+
+  def receive(draggers: Map[String, Magnet], positions: Map[Magnet, Point]): Receive = {
     case GetFullState =>
       sender() ! NewState(positions, partial = false)
     case GrabMagnet(magnet) =>
@@ -46,32 +58,25 @@ class FridgeActor(clientRegistry: ActorRef) extends Actor with ActorLogging {
       val draggedByClient = draggers.get(client)
 
       (clientDraggingMagnet, draggedByClient) match {
-        case (None, None) => //client is not dragging anything, and this magnet is free
-          setDragger(client, magnet)
-        case (None, Some(otherMagnet)) => //client is already dragging a different magnet, but this magnet is free
-          log.warning("{} was already dragging {}; switching to {}", client, otherMagnet, magnet)
-          setDragger(client, magnet)
+        case (None, currentDrag) => //client is not dragging anything
+          context.become(receive(draggers.updated(client, magnet), positions))
+          broadcast(MagnetGrabbed(magnet, client))
+          currentDrag.foreach(some => log.warning("{} was already dragging {}; switching to {}", client, some, magnet))
         case (Some(dragger), Some(`magnet`)) if dragger == actorRefToString(client) => //client is already dragging this magnet
           client ! MagnetGrabbed(magnet, client) //no need for a separate case object AlreadyDragging, just a friendly reminder
         case (Some(otherClient), _) => //some other bastard got it first :(
           client ! MagnetGrabbed(magnet, otherClient)
       }
     case DragMagnet(magnet, toPoint) =>
-      if (draggers.get(sender()).contains(magnet) && withinBounds(toPoint)) {
-        positions = positions.updated(magnet, toPoint)
-        broadcast(NewState(positions, partial = true))
+      if (draggers.get(sender()).contains(magnet) && canvas.contains(toPoint)) {
+        context.become(receive(draggers, positions + (magnet -> toPoint)))
+        broadcast(NewState(Map(magnet -> toPoint), partial = true))
       }
-    case ReleaseMagnet(magnet) =>
-      val client = sender()
-      if (draggers.get(client).contains(magnet))
-        draggers = draggers - client
-
+    case ReleaseMagnet =>
+      draggers.get(sender()).foreach(releasedMagnet => broadcast(MagnetReleased.apply(releasedMagnet)))
+      context.become(receive(draggers - sender(), positions))
   }
 
-  private def setDragger(connectedClient: ActorRef, magnet: Magnet): Unit = {
-    draggers = draggers.updated(connectedClient, magnet)
-    broadcast(MagnetGrabbed(magnet, connectedClient))
-  }
 
   private def broadcast(message: Any): Unit = {
     clientRegistry ! message

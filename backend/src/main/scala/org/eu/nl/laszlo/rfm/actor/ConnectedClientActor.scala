@@ -1,18 +1,46 @@
 package org.eu.nl.laszlo.rfm.actor
 
-import akka.actor.{Actor, ActorLogging, Props}
 import java.util.UUID
 
+import akka.actor.{Actor, ActorLogging, PoisonPill, Props, Stash}
+import akka.stream.QueueOfferResult
+import akka.stream.QueueOfferResult.{Dropped, Enqueued, QueueClosed}
+import akka.stream.scaladsl.SourceQueueWithComplete
+import org.eu.nl.laszlo.rfm.Protocol.Response
+import org.eu.nl.laszlo.rfm.actor.ConnectedClientActor.Ready
+
 object ConnectedClientActor {
+  def props(out: SourceQueueWithComplete[Response]): Props = Props[ConnectedClientActor](new ConnectedClientActor(UUID.randomUUID(), out))
 
-  //TODO: it would be easier if this were a child of ClientRegistryActor
+  case object Ready
 
-  def props: Props = Props[ConnectedClientActor](new ConnectedClientActor(UUID.randomUUID()))
 }
 
-class ConnectedClientActor(uuid: UUID) extends Actor with ActorLogging {
+class ConnectedClientActor(uuid: UUID, out: SourceQueueWithComplete[Response]) extends Actor with ActorLogging with Stash {
+
+  import akka.pattern.pipe
+  import context.dispatcher
 
   override def receive: Receive = {
-    case _ =>
+    case r: Response =>
+      out.offer(r).map {
+        case Enqueued => Ready
+        case Dropped => Ready
+        case QueueClosed => PoisonPill
+        case QueueOfferResult.Failure(e) =>
+          log.error(e, "could not enqueue message")
+          PoisonPill
+      }.pipeTo(self)
+
+      context.become(offered)
+
   }
+
+  def offered: Receive = {
+    case Ready =>
+      unstashAll()
+      context.become(receive)
+    case _ => stash
+  }
+
 }

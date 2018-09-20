@@ -1,35 +1,60 @@
 package org.eu.nl.laszlo.rfm
 
-import java.util.UUID
+import upickle.default.{macroRW, ReadWriter => RW}
 
-import upickle.default.{ReadWriter => RW, macroRW}
+import scala.util.Random
 
 object Protocol {
 
   //model
   object Magnet {
-    def apply(text: CharSequence): Magnet = {
-      val uuid = UUID.randomUUID()
-      Magnet((uuid.getMostSignificantBits, uuid.getLeastSignificantBits), text.toString)
+    def apply(id: Int, text: CharSequence): Magnet = {
+      Magnet(text.toString + id, text.toString)
     }
 
     implicit def rw: RW[Magnet] = macroRW
   }
 
-  final case class Magnet(handle: (Long, Long), text: String)
+  final case class Magnet(handle: String, text: String)
 
   object Point {
+    val origin = Point(0, 0)
+
     implicit def rw: RW[Point] = macroRW
+
+    def randomWithin(bounds: Square): Point = bounds.randomPointWithin()
+
   }
 
-  final case class Point(x: Int, y: Int)
+  final case class Square(origin: Point, farthest: Point) {
+    private val xRange = origin.x to farthest.x
+    private val yRange = origin.y to farthest.y
+
+    def contains(p: Point): Boolean = {
+      xRange.contains(p.x) && yRange.contains(p.y)
+    }
+
+    def randomPointWithin(): Point = {
+      Point(
+        Random.nextInt(farthest.x - origin.x),
+        Random.nextInt(farthest.y - origin.y)
+      )
+    }
+
+  }
+
+  final case class Point(x: Int, y: Int) {
+    def isInSquare(s: Square): Boolean = s.contains(this)
+  }
 
   //requests
   object Request {
     implicit def rw: RW[Request] = RW.merge(GetFullState.rw, GrabMagnet.rw, DragMagnet.rw, ReleaseMagnet.rw)
   }
 
-  sealed trait Request
+  trait InternalProtocol
+
+  sealed trait Request extends InternalProtocol
 
   case object GetFullState extends Request {
     implicit def rw: RW[GetFullState.type] = macroRW
@@ -47,11 +72,9 @@ object Protocol {
 
   final case class DragMagnet(magnet: Magnet, toPoint: Point) extends Request
 
-  object ReleaseMagnet {
-    implicit def rw: RW[ReleaseMagnet] = macroRW
+  case object ReleaseMagnet extends Request {
+    implicit def rw: RW[ReleaseMagnet.type] = macroRW
   }
-
-  final case class ReleaseMagnet(magnet: Magnet) extends Request
 
 
   //responses
