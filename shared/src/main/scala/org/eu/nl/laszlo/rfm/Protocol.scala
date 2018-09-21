@@ -79,16 +79,16 @@ object Protocol {
 
   //responses
   object Response {
-    implicit def rw: RW[Response] = RW.merge(NewState.rw, MagnetGrabbed.rw, MagnetReleased.rw)
+    implicit def rw: RW[Response] = RW.merge(NewPositions.rw, MagnetGrabbed.rw, MagnetReleased.rw, AggregateStateChange.rw)
   }
 
   sealed trait Response
 
-  object NewState {
-    implicit def rw: RW[NewState] = macroRW
+  object NewPositions {
+    implicit def rw: RW[NewPositions] = macroRW
   }
 
-  final case class NewState(positions: Map[Magnet, Point], partial: Boolean) extends Response
+  final case class NewPositions(positions: Map[Magnet, Point], partial: Boolean) extends Response
 
   object MagnetGrabbed {
     implicit def rw: RW[MagnetGrabbed] = macroRW
@@ -97,10 +97,17 @@ object Protocol {
   final case class MagnetGrabbed(magnet: Magnet, grabber: String) extends Response
 
   object MagnetReleased {
-
     implicit def rw: RW[MagnetReleased] = macroRW
   }
 
   final case class MagnetReleased(magnet: Magnet) extends Response
+
+  object AggregateStateChange {
+    implicit def rw: RW[AggregateStateChange] = macroRW
+  }
+
+  case class AggregateStateChange(moved: Option[NewPositions] = None,
+                                  grabbed: Set[MagnetGrabbed] = Set.empty,
+                                  released: Set[MagnetReleased] = Set.empty) extends Response
 
 }

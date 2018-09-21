@@ -3,11 +3,13 @@ package org.eu.nl.laszlo.rfm.actor
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import org.eu.nl.laszlo.rfm.Protocol._
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import scala.util.Random
 
 object FridgeActor {
 
-  private final val canvas: Square = Square(Point.origin, Point(1000, 1000))
+  private final val canvas: Square = Square(Point.origin, Point(1280, 720))
 
   private def createMagnets(): Set[Magnet] = {
     (for {
@@ -27,21 +29,31 @@ class FridgeActor(clientRegistry: ActorRef) extends Actor with ActorLogging {
 
   private val magnets: Set[Magnet] = createMagnets()
 
-  override def preStart(): Unit = {
-    context.system.scheduler.schedule(1.second, 1.second) {
-      self.tell(GetFullState, clientRegistry)
-    }(context.dispatcher)
+  private def randomItemFromSet[T](set: Set[T]): Option[T] = {
+    val i = Random.nextInt(set.size)
+    set.view(i, i + 1).headOption
+  }
 
-    context.system.scheduler.schedule(1.second, 1.second) {
-      val pickedMagnet = magnets.head //TODO: more random
-      self ! GrabMagnet(pickedMagnet)
-      self ! DragMagnet(pickedMagnet, canvas.randomPointWithin())
-      self ! ReleaseMagnet
-    }(context.dispatcher)
+  override def preStart(): Unit = {
+
+    implicit val dispatcher: ExecutionContext = context.dispatcher
+
+    context.system.scheduler.schedule(500.milliseconds, 10.second) {
+      self.tell(GetFullState, clientRegistry)
+    }
+
+    context.system.scheduler.schedule(4.second, 4.seconds) {
+      randomItemFromSet(magnets).foreach { pickedMagnet =>
+        self ! GrabMagnet(pickedMagnet)
+        context.system.scheduler.scheduleOnce(1.second, self, DragMagnet(pickedMagnet, canvas.randomPointWithin()))
+        context.system.scheduler.scheduleOnce(2.seconds, self, ReleaseMagnet)
+      }
+    }
 
   }
 
   import scala.language.implicitConversions
+
   implicit private def actorRefToString(actorRef: ActorRef): String = actorRef.path.name
 
   def receive: Receive = receive(
@@ -51,9 +63,13 @@ class FridgeActor(clientRegistry: ActorRef) extends Actor with ActorLogging {
 
   def receive(draggers: Map[String, Magnet], positions: Map[Magnet, Point]): Receive = {
     case GetFullState =>
-      sender() ! NewState(positions, partial = false)
+      sender() ! NewPositions(positions, partial = false)
+      sender() ! AggregateStateChange(grabbed = draggers.map({ case (a, b) => MagnetGrabbed(b, a) }).toSet)
     case GrabMagnet(magnet) =>
       val client = sender()
+
+      log.info("{} asked to grab {}", actorRefToString(client), magnet)
+
       val clientDraggingMagnet = draggers.find({ case (_, m) => m == magnet }).map(_._1)
       val draggedByClient = draggers.get(client)
 
@@ -68,13 +84,21 @@ class FridgeActor(clientRegistry: ActorRef) extends Actor with ActorLogging {
           client ! MagnetGrabbed(magnet, otherClient)
       }
     case DragMagnet(magnet, toPoint) =>
-      if (draggers.get(sender()).contains(magnet) && canvas.contains(toPoint)) {
+      val client = sender()
+
+      log.info("{} asked to drag {} to {}", actorRefToString(client), magnet, toPoint)
+
+      if (draggers.get(client).contains(magnet) && canvas.contains(toPoint)) {
         context.become(receive(draggers, positions + (magnet -> toPoint)))
-        broadcast(NewState(Map(magnet -> toPoint), partial = true))
+        broadcast(NewPositions(Map(magnet -> toPoint), partial = true))
       }
     case ReleaseMagnet =>
-      draggers.get(sender()).foreach(releasedMagnet => broadcast(MagnetReleased.apply(releasedMagnet)))
-      context.become(receive(draggers - sender(), positions))
+      val client = sender()
+
+      log.info("{} asked to release magnet", actorRefToString(client))
+
+      draggers.get(client).foreach(releasedMagnet => broadcast(MagnetReleased.apply(releasedMagnet)))
+      context.become(receive(draggers - client, positions))
   }
 
 
