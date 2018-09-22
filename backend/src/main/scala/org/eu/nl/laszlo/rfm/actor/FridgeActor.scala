@@ -42,11 +42,11 @@ class FridgeActor(clientRegistry: ActorRef) extends Actor with ActorLogging {
       self.tell(GetFullState, clientRegistry)
     }
 
-    context.system.scheduler.schedule(4.second, 4.seconds) {
+    context.system.scheduler.schedule(1.second, 500.milliseconds) {
       randomItemFromSet(magnets).foreach { pickedMagnet =>
         self ! GrabMagnet(pickedMagnet)
-        context.system.scheduler.scheduleOnce(1.second, self, DragMagnet(pickedMagnet, canvas.randomPointWithin()))
-        context.system.scheduler.scheduleOnce(2.seconds, self, ReleaseMagnet)
+        context.system.scheduler.scheduleOnce(100.milliseconds, self, DragMagnet(pickedMagnet, canvas.randomPointWithin()))
+        context.system.scheduler.scheduleOnce(200.milliseconds, self, ReleaseMagnet)
       }
     }
 

@@ -47,11 +47,13 @@ object Main {
           (grabbed ++ released ++ moved.toSet).foreach(processResponse)
         case Protocol.NewPositions(positions, partial) =>
           writeToArea(s"${if (partial) "updated positions" else "new positions"}: $positions")
-          positions.foreach((updateMagnet _).tupled)
+          positions.foreach((moveMagnet _).tupled)
         case Protocol.MagnetGrabbed(magnet, grabber) =>
           writeToArea(s"$magnet grabbed by $grabber")
+          grabMagnet(magnet)
         case Protocol.MagnetReleased(magnet) =>
           writeToArea(s"$magnet released")
+          releaseMagnet(magnet)
       }
     }
 
@@ -59,16 +61,34 @@ object Main {
       messages.innerHTML = text
   }
 
-  def updateMagnet(magnet: Magnet, point: Point): Unit = {
-    var magnetHTML = dom.document.getElementById(magnet.handle).asInstanceOf[html.Paragraph]
-    if (magnetHTML == null) {
-      magnetHTML = p(magnet.text)
-      magnetHTML.id = magnet.handle
-      magnetHTML.style.position = "absolute"
-      canvas.appendChild(magnetHTML)
-    }
+  def getMagnet(magnet: Magnet): html.Paragraph = {
+    val existingP = dom.document.getElementById(magnet.handle).asInstanceOf[html.Paragraph]
+    if (existingP != null) return existingP
+
+    val newP = p(magnet.text)
+    newP.id = magnet.handle
+    newP.style.position = "absolute"
+    newP.style.fontFamily = "sans-serif"
+    newP.style.fontSize = "16px"
+    newP.style.borderWidth = "3px"
+    newP.style.borderStyle = "solid"
+    newP.style.borderColor = "transparent"
+    canvas.appendChild(newP)
+    newP
+  }
+
+  def moveMagnet(magnet: Magnet, point: Point): Unit = {
+    val magnetHTML = getMagnet(magnet)
     magnetHTML.style.left = point.x.toString
     magnetHTML.style.top = point.y.toString
+  }
+
+  def grabMagnet(magnet: Magnet): Unit = {
+    getMagnet(magnet).style.borderColor = "red"
+  }
+
+  def releaseMagnet(magnet: Magnet): Unit = {
+    getMagnet(magnet).style.borderColor = "transparent"
   }
 
   def p(msg: String): html.Paragraph = {
@@ -80,7 +100,9 @@ object Main {
   def getWebsocketUri(participant: String): String = {
     val wsProtocol = if (dom.document.location.protocol == "https:") "wss" else "ws"
 
-    s"$wsProtocol://${dom.document.location.host}/rfm?name=$participant"
+    s"$wsProtocol://${
+      dom.document.location.host
+    }/rfm?name=$participant"
   }
 
 }
