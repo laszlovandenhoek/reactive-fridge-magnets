@@ -25,7 +25,9 @@ class ConnectedClientActor(uuid: UUID, out: SourceQueueWithComplete[Response]) e
     case r: Response =>
       out.offer(r).map {
         case Enqueued => Ready
-        case Dropped => Ready
+        case Dropped =>
+          log.warning("message {} dropped", r)
+          Ready
         case QueueClosed => PoisonPill
         case QueueOfferResult.Failure(e) =>
           log.error(e, "could not enqueue message")

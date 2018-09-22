@@ -23,7 +23,10 @@ class ClientRegistryActor(broadcast: ActorRef) extends Actor with ActorLogging {
       val newClient = context.actorOf(ConnectedClientActor.props(out), name)
       clients += newClient
       fridge.tell(GetFullState, newClient)
-    case request: Request => fridge ! request
+    case request: Request =>
+      //FIXME: sender() is deadLetters at this point. We need Requests to be routed through the corresponding ConnectedClientActor.
+      //maybe it should be replaced by an Akka Streams primitive after all?
+      fridge.forward(request)
     case response: Response => broadcast ! response
   }
 }

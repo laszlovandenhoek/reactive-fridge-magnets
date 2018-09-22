@@ -2,7 +2,7 @@ package org.eu.nl.laszlo.rfm
 
 import java.util.UUID
 
-import org.eu.nl.laszlo.rfm.Protocol.{Magnet, Point}
+import org.eu.nl.laszlo.rfm.Protocol._
 import org.scalajs.dom
 import org.scalajs.dom._
 import upickle.default._
@@ -22,8 +22,6 @@ object Main {
     chat.onopen = { event: Event =>
       messages.insertBefore(p("Chat connection was successful!"), messages.firstChild)
 
-      //TODO: put event handlers on all magnets
-
       event
     }
     chat.onerror = { event: Event =>
@@ -37,9 +35,10 @@ object Main {
 
       processResponse(wsMsg)
     }
-    chat.onclose = { event: Event =>
-      messages.insertBefore(p("Connection to chat lost. You can try to rejoin manually."), messages.firstChild)
+    chat.onclose = { event: CloseEvent =>
+      messages.insertBefore(p(s"Connection to chat lost. You can try to rejoin manually. Code: ${event.code}, reason: ${event.reason}, clean: ${event.wasClean}"), messages.firstChild)
     }
+
 
     def processResponse(r: Protocol.Response): Unit = {
       r match {
@@ -59,36 +58,69 @@ object Main {
 
     def writeToArea(text: String): Unit =
       messages.innerHTML = text
-  }
 
-  def getMagnet(magnet: Magnet): html.Paragraph = {
-    val existingP = dom.document.getElementById(magnet.handle).asInstanceOf[html.Paragraph]
-    if (existingP != null) return existingP
+    def getMagnet(magnet: Magnet): html.Paragraph = {
+      val existingP = dom.document.getElementById(magnet.handle).asInstanceOf[html.Paragraph]
+      if (existingP != null) return existingP
 
-    val newP = p(magnet.text)
-    newP.id = magnet.handle
-    newP.style.position = "absolute"
-    newP.style.fontFamily = "sans-serif"
-    newP.style.fontSize = "16px"
-    newP.style.borderWidth = "3px"
-    newP.style.borderStyle = "solid"
-    newP.style.borderColor = "transparent"
-    canvas.appendChild(newP)
-    newP
-  }
 
-  def moveMagnet(magnet: Magnet, point: Point): Unit = {
-    val magnetHTML = getMagnet(magnet)
-    magnetHTML.style.left = point.x.toString
-    magnetHTML.style.top = point.y.toString
-  }
+      val newP = p(magnet.text)
+      newP.id = magnet.handle
+      newP.style.position = "absolute"
+      newP.style.fontFamily = "sans-serif"
+      newP.style.fontSize = "16px"
+      newP.style.borderWidth = "3px"
+      newP.style.borderStyle = "solid"
+      newP.style.borderColor = "transparent"
 
-  def grabMagnet(magnet: Magnet): Unit = {
-    getMagnet(magnet).style.borderColor = "red"
-  }
+      newP.onmousedown = { event: MouseEvent =>
+        newP.draggable = true
+        startDragging(magnet)
+      }
+      newP.onmouseup = { event: MouseEvent =>
+        newP.draggable = false
+        stopDragging(magnet)
+      }
 
-  def releaseMagnet(magnet: Magnet): Unit = {
-    getMagnet(magnet).style.borderColor = "transparent"
+      //TODO: put on drag handler
+      //TODO: debounce moves
+      //TODO: translate moves to ws comms
+
+
+      canvas.appendChild(newP)
+      newP
+    }
+
+    //client actions
+
+    def startDragging(magnet: Magnet): Unit = {
+      chat.send(
+        write(GrabMagnet(magnet))
+      )
+    }
+
+    def stopDragging(magnet: Magnet): Unit = {
+      chat.send(
+        write(ReleaseMagnet)
+      )
+    }
+
+
+    //server response handling
+
+    def moveMagnet(magnet: Magnet, point: Point): Unit = {
+      val magnetHTML = getMagnet(magnet)
+      magnetHTML.style.left = point.x.toString
+      magnetHTML.style.top = point.y.toString
+    }
+
+    def grabMagnet(magnet: Magnet): Unit = {
+      getMagnet(magnet).style.borderColor = "red"
+    }
+
+    def releaseMagnet(magnet: Magnet): Unit = {
+      getMagnet(magnet).style.borderColor = "transparent"
+    }
   }
 
   def p(msg: String): html.Paragraph = {
