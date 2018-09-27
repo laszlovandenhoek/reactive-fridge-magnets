@@ -55,7 +55,9 @@ lazy val frontend = (project in file("frontend"))
 
     npmDependencies in Compile ++= Seq(
       "react" -> "16.5.1",
-      "react-dom" -> "16.5.1"),
+      "react-dom" -> "16.5.1",
+//      "normalize.css" -> "8.0.0"
+    ),
 
     libraryDependencies ++= Seq(
       "org.scala-js" %%% "scalajs-dom" % "0.9.6",

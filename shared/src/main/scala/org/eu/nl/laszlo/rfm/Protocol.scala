@@ -45,6 +45,7 @@ object Protocol {
 
   final case class Point(x: Int, y: Int) {
     def isInSquare(s: Square): Boolean = s.contains(this)
+    def terse: String = s"$x,$y"
   }
 
   //requests
