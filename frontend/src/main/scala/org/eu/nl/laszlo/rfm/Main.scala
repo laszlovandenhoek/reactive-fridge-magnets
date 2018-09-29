@@ -15,8 +15,9 @@ object Main {
   val canvas: html.Div = dom.document.getElementById("canvas").asInstanceOf[html.Div]
 
   canvas.style.zIndex = "-1"
-  canvas.style.height = "100%"
-  canvas.style.width = "100%"
+  canvas.style.height = "720px"
+  canvas.style.width = "1280px"
+  canvas.style.border = "1px solid black"
 
   val name: String = UUID.randomUUID().toString
 

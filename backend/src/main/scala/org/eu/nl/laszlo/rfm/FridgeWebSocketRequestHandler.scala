@@ -69,12 +69,14 @@ trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
 
             val in: Sink[Message, NotUsed] =
               Flow[Message].mapAsync(1)(wsToInternalProtocol)
-                .via(
-                  startWith(ClientConnected(name, queue)))
+                .via(startWith(ClientConnected(name, queue)))
                 .to(fanIn)
 
             val out: Source[Message, NotUsed] =
-              fridgeBroadcast.merge(source, eagerComplete = true).map(response => TextMessage(write(response)))
+              fridgeBroadcast.merge(source, eagerComplete = true)
+                .conflateWithSeed(_.asAggregate)(_ add _)
+                .throttle(1, 50.milliseconds)
+                .map(response => TextMessage(write(response)))
 
             handleWebSocketMessages(Flow.fromSinkAndSource(in, out))
 

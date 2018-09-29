@@ -73,7 +73,7 @@ class FridgeActor(clientRegistry: ActorRef) extends Actor with ActorLogging {
       self.tell(GetFullState, clientRegistry)
     }
 
-    context.system.scheduler.schedule(4.seconds, 4.seconds) {
+    context.system.scheduler.schedule(4.seconds, 30.seconds) {
       randomItemFromSet(magnets).foreach { pickedMagnet =>
         self ! GrabMagnet(pickedMagnet)
         context.system.scheduler.scheduleOnce(1.second, self, DragMagnet(pickedMagnet, canvas.randomPointWithin()))
@@ -94,8 +94,9 @@ class FridgeActor(clientRegistry: ActorRef) extends Actor with ActorLogging {
 
   def receive(draggers: Map[String, Magnet], positions: Map[Magnet, Point]): Receive = {
     case GetFullState =>
-      sender() ! NewPositions(positions, partial = false)
-      sender() ! AggregateStateChange(grabbed = draggers.map({ case (a, b) => MagnetGrabbed(b, a) }).toSet)
+      sender() ! AggregateStateChange(
+        moved = Some(NewPositions(positions, partial = false)),
+        grabbed = draggers.map({ case (a, b) => MagnetGrabbed(b, a) }).toSet)
     case GrabMagnet(magnet) =>
       val client = sender()
 
