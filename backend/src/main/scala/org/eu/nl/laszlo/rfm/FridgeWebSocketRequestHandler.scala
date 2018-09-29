@@ -8,7 +8,7 @@ import akka.http.scaladsl.server.{Directives, Route}
 import akka.stream._
 import akka.stream.scaladsl.{BroadcastHub, Concat, Flow, GraphDSL, Keep, MergeHub, Sink, Source}
 import de.heikoseeberger.akkahttpupickle.UpickleSupport
-import org.eu.nl.laszlo.rfm.Protocol.Response
+import org.eu.nl.laszlo.rfm.Protocol.{ExternalRequestWrapper, Response}
 import org.eu.nl.laszlo.rfm.actor.ClientRegistryActor
 import org.eu.nl.laszlo.rfm.actor.ClientRegistryActor.ClientConnected
 import upickle.default._
@@ -36,15 +36,15 @@ trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
 
     val clientRegistryActor: ActorRef = system.actorOf(ClientRegistryActor.props(outActor), name = "client-registry")
 
-    def wsToInternalProtocol(message: Message): Future[Protocol.InternalProtocol] = message match {
-      case tm: TextMessage => tm.toStrict(10.seconds).map(t => read[Protocol.Request](t.text))
+    def wsToInternalProtocol(name: String)(message: Message): Future[Protocol.InternalRequest] = message match {
+      case tm: TextMessage => tm.toStrict(10.seconds).map(t => read[Protocol.Request](t.text)).map(req => ExternalRequestWrapper(name, req))
       case bm: BinaryMessage =>
         // consume the stream
         bm.dataStream.runWith(Sink.ignore)
         Future.failed(new Exception("yuck"))
     }
 
-    val fanIn: Sink[Protocol.InternalProtocol, NotUsed] = MergeHub.source[Protocol.InternalProtocol].to(Sink.actorRef(clientRegistryActor, PoisonPill)).run()
+    val fanIn: Sink[Protocol.InternalRequest, NotUsed] = MergeHub.source[Protocol.InternalRequest].to(Sink.actorRef(clientRegistryActor, PoisonPill)).run()
 
     def startWith[T](elem: T) = Flow.fromGraph(
       GraphDSL.create() { implicit builder =>
@@ -68,7 +68,7 @@ trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
             val (queue, source) = Source.queue[Response](1, overflowStrategy = OverflowStrategy.fail).preMaterialize()
 
             val in: Sink[Message, NotUsed] =
-              Flow[Message].mapAsync(1)(wsToInternalProtocol)
+              Flow[Message].mapAsync(1)(wsToInternalProtocol(name))
                 .via(startWith(ClientConnected(name, queue)))
                 .to(fanIn)
 

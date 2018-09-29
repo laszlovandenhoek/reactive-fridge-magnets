@@ -50,13 +50,18 @@ object Protocol {
   }
 
   //requests
+
+  trait InternalRequest {
+    def name: String
+  }
+
+  case class ExternalRequestWrapper(name: String, request: Request) extends InternalRequest
+
   object Request {
     implicit def rw: RW[Request] = RW.merge(GetFullState.rw, GrabMagnet.rw, DragMagnet.rw, ReleaseMagnet.rw)
   }
 
-  trait InternalProtocol
-
-  sealed trait Request extends InternalProtocol
+  sealed trait Request
 
   case object GetFullState extends Request {
     implicit def rw: RW[GetFullState.type] = macroRW
