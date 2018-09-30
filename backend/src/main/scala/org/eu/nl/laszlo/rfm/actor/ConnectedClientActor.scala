@@ -1,7 +1,5 @@
 package org.eu.nl.laszlo.rfm.actor
 
-import java.util.UUID
-
 import akka.actor.{Actor, ActorLogging, PoisonPill, Props, Stash}
 import akka.stream.QueueOfferResult
 import akka.stream.QueueOfferResult.{Dropped, Enqueued, QueueClosed}
@@ -10,13 +8,13 @@ import org.eu.nl.laszlo.rfm.Protocol.Response
 import org.eu.nl.laszlo.rfm.actor.ConnectedClientActor.Ready
 
 object ConnectedClientActor {
-  def props(out: SourceQueueWithComplete[Response]): Props = Props[ConnectedClientActor](new ConnectedClientActor(UUID.randomUUID(), out))
+  def props(out: SourceQueueWithComplete[Response]): Props = Props[ConnectedClientActor](new ConnectedClientActor(out))
 
   case object Ready
 
 }
 
-class ConnectedClientActor(uuid: UUID, out: SourceQueueWithComplete[Response]) extends Actor with ActorLogging with Stash {
+class ConnectedClientActor(out: SourceQueueWithComplete[Response]) extends Actor with ActorLogging with Stash {
 
   import akka.pattern.pipe
   import context.dispatcher

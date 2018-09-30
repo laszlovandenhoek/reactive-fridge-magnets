@@ -99,14 +99,14 @@ object Main {
       newP.ondragstart = { event: DragEvent =>
         console.info("ondragStart", magnet.handle, event.target)
         event.dataTransfer.setData(magnetType, magnet.handle)
-        notifyStartDragging(magnet)
+        notifyStartDragging(magnet.handle)
       }
 
       newP.ondrag = { event: DragEvent =>
         val point = Point(event.pageX.toInt - 24, event.pageY.toInt - 24)
         console.info("ondrag", magnet.handle, point.terse)
         //TODO: debounce moves
-        chat.send(write(DragMagnet(magnet, point)))
+        chat.send(write(DragMagnet(magnet.handle, point)))
       }
       canvas.appendChild(newP)
       newP
@@ -114,16 +114,16 @@ object Main {
 
     //client actions
 
-    def notifyStartDragging(magnet: Magnet): Unit = {
+    def notifyStartDragging(magnetHandle: String): Unit = {
       chat.send(
-        write(GrabMagnet(magnet))
+        write(GrabMagnet(magnetHandle))
       )
     }
 
     def stopDragging(magnetHandle: String): Unit = {
       console.info("stop dragging", magnetHandle)
       chat.send(
-        write(ReleaseMagnet)
+        write(ReleaseMagnet(magnetHandle))
       )
     }
 

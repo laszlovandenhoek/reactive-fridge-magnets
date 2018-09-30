@@ -49,7 +49,38 @@ object Protocol {
     def terse: String = s"$x,$y"
   }
 
+  //commands
+  object MagnetMessage {
+    implicit def rw: RW[MagnetMessage] = RW.merge(Locate.rw, Grab.rw, Drag.rw, Release.rw)
+  }
+
+  sealed trait MagnetMessage
+
+  case object Locate extends MagnetMessage {
+    implicit def rw: RW[Locate.type] = macroRW
+  }
+
+  case object Grab extends MagnetMessage {
+    implicit def rw: RW[Grab.type] = macroRW
+  }
+
+  case object Release extends MagnetMessage {
+    implicit def rw: RW[Release.type] = macroRW
+  }
+
+  object Drag {
+    implicit def rw: RW[Drag] = macroRW
+  }
+
+  case class Drag(to: Point) extends MagnetMessage
+
   //requests
+
+  sealed trait MagnetCommand {
+    def magnetHandle: String
+
+    def message: MagnetMessage
+  }
 
   trait InternalRequest {
     def name: String
@@ -71,16 +102,24 @@ object Protocol {
     implicit def rw: RW[GrabMagnet] = macroRW
   }
 
-  final case class GrabMagnet(magnet: Magnet) extends Request
+  final case class GrabMagnet(magnetHandle: String) extends Request with MagnetCommand {
+    override def message: MagnetMessage = Grab
+  }
 
   object DragMagnet {
     implicit def rw: RW[DragMagnet] = macroRW
   }
 
-  final case class DragMagnet(magnet: Magnet, toPoint: Point) extends Request
+  final case class DragMagnet(magnetHandle: String, toPoint: Point) extends Request with MagnetCommand {
+    override def message: MagnetMessage = Drag(toPoint)
+  }
 
-  case object ReleaseMagnet extends Request {
-    implicit def rw: RW[ReleaseMagnet.type] = macroRW
+  object ReleaseMagnet {
+    implicit def rw: RW[ReleaseMagnet] = macroRW
+  }
+
+  final case class ReleaseMagnet(magnetHandle: String) extends Request with MagnetCommand {
+    override def message: MagnetMessage = Release
   }
 
 
