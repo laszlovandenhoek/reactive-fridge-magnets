@@ -16,7 +16,6 @@ class MagnetActor(text: String, canvas: Square, broadcast: ActorRef) extends Act
 
   override def receive: Receive = available(canvas.randomPointWithin())
 
-
   def available(position: Point): Receive = {
     case Locate =>
       sender() ! NewPositions(Map(magnet -> position), partial = true)
@@ -37,8 +36,8 @@ class MagnetActor(text: String, canvas: Square, broadcast: ActorRef) extends Act
       releaseTimeout.cancel()
       broadcast ! MagnetReleased(magnet)
       context.become(available(position))
-    case Drag(to) if sender() == grabber =>
-      broadcast ! NewPositions(Map(magnet -> position), partial = true)
+    case Drag(to) if sender() == grabber && canvas.contains(to) =>
+      broadcast ! NewPositions(Map(magnet -> to), partial = true)
       context.become(grabbed(to, grabber, releaseTimeout))
   }
 

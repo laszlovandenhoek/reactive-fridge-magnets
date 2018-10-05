@@ -47,9 +47,8 @@ trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
     val fanIn: Sink[Protocol.InternalRequest, NotUsed] = MergeHub.source[Protocol.InternalRequest].to(Sink.actorRef(clientRegistryActor, PoisonPill)).run()
 
     def startWith[T](elem: T) = Flow.fromGraph(
-      GraphDSL.create() { implicit builder =>
+      GraphDSL.create(Concat[T]()) { implicit builder => concat =>
         import GraphDSL.Implicits._
-        val concat = builder.add(Concat[T]())
         Source.single(elem) ~> concat.in(0)
         FlowShape.of(concat.in(1), concat.out)
       }

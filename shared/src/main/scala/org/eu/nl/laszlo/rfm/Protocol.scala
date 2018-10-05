@@ -9,8 +9,10 @@ object Protocol {
   //model
   object Magnet {
     def apply(id: Int, text: CharSequence): Magnet = {
-      Magnet(text.toString + id, text.toString)
+      Magnet(makeId(id, text), text.toString)
     }
+
+    def makeId(id: Int, text: CharSequence): String = text.toString + id
 
     implicit def rw: RW[Magnet] = macroRW
   }
