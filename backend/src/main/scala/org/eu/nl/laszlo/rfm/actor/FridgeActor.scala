@@ -3,9 +3,7 @@ package org.eu.nl.laszlo.rfm.actor
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import org.eu.nl.laszlo.rfm.Protocol._
 
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import scala.util.Random
 
 object FridgeActor {
 
@@ -55,25 +53,15 @@ object FridgeActor {
     "ooi" -> 1,
   )
 
-  private final val canvas: Square = Square(Point.origin, Point(1280, 720))
-
-  def props(clientRegistry: ActorRef): Props = Props[FridgeActor](new FridgeActor(clientRegistry))
+  def props(clientRegistry: ActorRef, canvas: Square): Props = Props[FridgeActor](new FridgeActor(clientRegistry, canvas))
 
 }
 
-class FridgeActor(clientRegistry: ActorRef) extends Actor with ActorLogging {
+class FridgeActor(clientRegistry: ActorRef, canvas: Square) extends Actor with ActorLogging {
 
   import FridgeActor._
 
-
-  private def randomItem[T](it: Iterable[T]): Option[T] = {
-    val i = Random.nextInt(it.size)
-    it.view(i, i + 1).headOption
-  }
-
   override def preStart(): Unit = {
-
-    implicit val dispatcher: ExecutionContext = context.dispatcher
 
     for {
       (char, freq) <- charFrequencies.toSet
@@ -82,15 +70,7 @@ class FridgeActor(clientRegistry: ActorRef) extends Actor with ActorLogging {
 
     context.system.scheduler.schedule(500.milliseconds, 10.second) {
       self.tell(GetFullState, clientRegistry)
-    }
-
-    context.system.scheduler.schedule(4.seconds, 30.seconds) {
-      randomItem(context.children).map(_.path.name).foreach { pickedMagnet =>
-        self ! GrabMagnet(pickedMagnet)
-        context.system.scheduler.scheduleOnce(1.second, self, DragMagnet(pickedMagnet, canvas.randomPointWithin()))
-        context.system.scheduler.scheduleOnce(2.seconds, self, ReleaseMagnet(pickedMagnet))
-      }
-    }
+    }(context.dispatcher)
 
   }
 
@@ -106,10 +86,15 @@ class FridgeActor(clientRegistry: ActorRef) extends Actor with ActorLogging {
       case GetFullState =>
         context.children.foreach(_.tell(Locate, sender()))
       case gm: GrabMagnet =>
-        currentGrab.filterNot(gm.magnetHandle.equals).flatMap(context.child).foreach(_.tell(Release, sender()))
+        log.info("{} grabbed {}", senderName, gm.magnetHandle)
+        currentGrab
+          .filterNot(gm.magnetHandle.equals)
+          .flatMap(context.child)
+          .foreach(_.tell(Release, sender()))
         dispatchToMagnetActor(gm)
         context.become(receive(grabs + (senderName -> gm.magnetHandle)))
       case rm: ReleaseMagnet =>
+        log.info("{} released {}", senderName, rm.magnetHandle)
         if (currentGrab.contains(rm.magnetHandle)) {
           dispatchToMagnetActor(rm)
           context.become(receive(grabs - senderName))

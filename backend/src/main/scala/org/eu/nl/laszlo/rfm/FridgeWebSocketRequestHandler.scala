@@ -1,6 +1,6 @@
 package org.eu.nl.laszlo.rfm
 
-import akka.NotUsed
+import akka.{Done, NotUsed}
 import akka.actor.{ActorRef, ActorSystem, PoisonPill}
 import akka.event.Logging
 import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage}
@@ -8,7 +8,7 @@ import akka.http.scaladsl.server.{Directives, Route}
 import akka.stream._
 import akka.stream.scaladsl.{BroadcastHub, Concat, Flow, GraphDSL, Keep, MergeHub, Sink, Source}
 import de.heikoseeberger.akkahttpupickle.UpickleSupport
-import org.eu.nl.laszlo.rfm.Protocol.{ExternalRequestWrapper, Response}
+import org.eu.nl.laszlo.rfm.Protocol.{ExternalRequestWrapper, Point, Response, Square}
 import org.eu.nl.laszlo.rfm.actor.ClientRegistryActor
 import org.eu.nl.laszlo.rfm.actor.ClientRegistryActor.ClientConnected
 import upickle.default._
@@ -27,6 +27,8 @@ trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
 
   lazy val log = Logging(system, classOf[FridgeWebSocketRequestHandler])
 
+  private lazy final val canvas: Square = Square(Point.origin, Point(1280, 720))
+
   def route: Route = {
 
     val (outActor, fridgeBroadcast): (ActorRef, Source[Response, NotUsed]) =
@@ -34,7 +36,7 @@ trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
         .toMat(BroadcastHub.sink(1))(Keep.both)
         .run()
 
-    val clientRegistryActor: ActorRef = system.actorOf(ClientRegistryActor.props(outActor), name = "client-registry")
+    val clientRegistryActor: ActorRef = system.actorOf(ClientRegistryActor.props(outActor, canvas), name = "client-registry")
 
     def wsToInternalProtocol(name: String)(message: Message): Future[Protocol.InternalRequest] = message match {
       case tm: TextMessage => tm.toStrict(10.seconds).map(t => read[Protocol.Request](t.text)).map(req => ExternalRequestWrapper(name, req))
@@ -47,10 +49,11 @@ trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
     val fanIn: Sink[Protocol.InternalRequest, NotUsed] = MergeHub.source[Protocol.InternalRequest].to(Sink.actorRef(clientRegistryActor, PoisonPill)).run()
 
     def startWith[T](elem: T) = Flow.fromGraph(
-      GraphDSL.create(Concat[T]()) { implicit builder => concat =>
-        import GraphDSL.Implicits._
-        Source.single(elem) ~> concat.in(0)
-        FlowShape.of(concat.in(1), concat.out)
+      GraphDSL.create(Concat[T]()) { implicit builder =>
+        concat =>
+          import GraphDSL.Implicits._
+          Source.single(elem) ~> concat.in(0)
+          FlowShape.of(concat.in(1), concat.out)
       }
     )
 
@@ -64,20 +67,27 @@ trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
         // the websocket
         path("rfm") {
           parameter('name) { name =>
-            val (queue, source) = Source.queue[Response](128, overflowStrategy = OverflowStrategy.fail).preMaterialize()
+            val (queue, queueSource) = Source.queue[Response](1024, overflowStrategy = OverflowStrategy.fail).preMaterialize()
 
-            val in: Sink[Message, NotUsed] =
+            val (done: Future[Done], in: Sink[Message, NotUsed]) =
               Flow[Message].mapAsync(1)(wsToInternalProtocol(name))
                 .via(startWith(ClientConnected(name, queue)))
+                .watchTermination()(Keep.right)
                 .to(fanIn)
+                .preMaterialize()
+
+            done.onComplete(_ => {
+              log.info("client {} done", name)
+              queue.complete()
+            })
 
             val out: Source[Message, NotUsed] =
-              fridgeBroadcast.merge(source, eagerComplete = true)
+              fridgeBroadcast.merge(queueSource, eagerComplete = true)
                 .conflateWithSeed(_.asAggregate)(_ add _)
                 .throttle(1, 50.milliseconds)
                 .map(response => TextMessage(write(response)))
 
-            handleWebSocketMessages(Flow.fromSinkAndSource(in, out))
+            handleWebSocketMessages(Flow.fromSinkAndSourceCoupled(in, out))
 
           }
         }

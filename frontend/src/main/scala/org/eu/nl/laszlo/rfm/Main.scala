@@ -138,7 +138,7 @@ object Main {
 
     def grabMagnet(magnet: Magnet, grabber: String): Unit = {
       val paragraph = getMagnet(magnet)
-      paragraph.style.borderColor = "red"
+      paragraph.style.borderColor = grabber.take(6)
       if (grabber != name) {
         paragraph.draggable = false
       }

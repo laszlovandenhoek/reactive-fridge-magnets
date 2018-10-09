@@ -169,6 +169,11 @@ object Protocol {
                                   released: Set[MagnetReleased] = Set.empty) extends Response {
     override def asAggregate: AggregateStateChange = this
 
+    /**
+      * add the response to this AggregateStateChange
+      * @param response the response to add to the current state
+      * @return the new state
+      */
     def add(response: Response): AggregateStateChange = response match {
       case np@NewPositions(_, partial) if moved.isEmpty || !partial =>
         copy(moved = Some(np))
