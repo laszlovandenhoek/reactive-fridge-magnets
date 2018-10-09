@@ -6,7 +6,7 @@ import akka.event.Logging
 import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage}
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.stream._
-import akka.stream.scaladsl.{BroadcastHub, Concat, Flow, GraphDSL, Keep, MergeHub, Sink, Source}
+import akka.stream.scaladsl.{BroadcastHub, Concat, Flow, GraphDSL, Keep, MergeHub, Sink, Source, SourceQueueWithComplete}
 import de.heikoseeberger.akkahttpupickle.UpickleSupport
 import org.eu.nl.laszlo.rfm.Protocol.{ExternalRequestWrapper, Point, Response, Square}
 import org.eu.nl.laszlo.rfm.actor.ClientRegistryActor
@@ -31,10 +31,13 @@ trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
 
   def route: Route = {
 
-    val (outActor, fridgeBroadcast): (ActorRef, Source[Response, NotUsed]) =
-      Source.actorRef[Protocol.Response](256, OverflowStrategy.dropTail)
+    val (outActor: ActorRef, fridgeBroadcast: Source[Response, NotUsed]) =
+      Source.actorRef[Protocol.Response](128, OverflowStrategy.fail)
         .toMat(BroadcastHub.sink(1))(Keep.both)
         .run()
+
+    //force demand so the buffer doesn't overrun
+    fridgeBroadcast.to(Sink.ignore).run()
 
     val clientRegistryActor: ActorRef = system.actorOf(ClientRegistryActor.props(outActor, canvas), name = "client-registry")
 
@@ -67,7 +70,8 @@ trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
         // the websocket
         path("rfm") {
           parameter('name) { name =>
-            val (queue, queueSource) = Source.queue[Response](1024, overflowStrategy = OverflowStrategy.fail).preMaterialize()
+            val (queue: SourceQueueWithComplete[Response], queueSource: Source[Response, NotUsed]) =
+              Source.queue[Response](128, OverflowStrategy.fail).preMaterialize()
 
             val (done: Future[Done], in: Sink[Message, NotUsed]) =
               Flow[Message].mapAsync(1)(wsToInternalProtocol(name))
@@ -77,7 +81,6 @@ trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
                 .preMaterialize()
 
             done.onComplete(_ => {
-              log.info("client {} done", name)
               queue.complete()
             })
 

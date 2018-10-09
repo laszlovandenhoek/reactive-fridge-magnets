@@ -94,7 +94,9 @@ object Protocol {
     implicit def rw: RW[Request] = RW.merge(GetFullState.rw, GrabMagnet.rw, DragMagnet.rw, ReleaseMagnet.rw)
   }
 
-  sealed trait Request
+  sealed trait Request {
+    def toExternalRequestWrapper(name: String) = ExternalRequestWrapper(name, this)
+  }
 
   case object GetFullState extends Request {
     implicit def rw: RW[GetFullState.type] = macroRW

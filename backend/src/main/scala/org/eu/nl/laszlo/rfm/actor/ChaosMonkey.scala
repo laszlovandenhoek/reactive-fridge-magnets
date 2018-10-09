@@ -27,20 +27,22 @@ class ChaosMonkey(canvas: Square) extends Actor with ActorLogging {
     it.view(i, i + 1).headOption
   }
 
+  private def wrap(request: Request) = request.toExternalRequestWrapper(ChaosMonkey.name)
+
   def startChaos(): Unit = {
-    log.info("chaos on")
+    log.info("it's chaos!")
     implicit val dispatcher: ExecutionContext = context.dispatcher
     chaos = context.system.scheduler.schedule(4.seconds, 4.seconds) {
       state.moved.map(_.positions.keys).flatMap(randomItem).map(_.handle).foreach { pickedMagnet =>
-        context.parent ! ExternalRequestWrapper(ChaosMonkey.name, GrabMagnet(pickedMagnet))
-        context.system.scheduler.scheduleOnce(1.second, context.parent, ExternalRequestWrapper(ChaosMonkey.name, DragMagnet(pickedMagnet, canvas.randomPointWithin())))
-        context.system.scheduler.scheduleOnce(2.seconds, context.parent, ExternalRequestWrapper(ChaosMonkey.name, ReleaseMagnet(pickedMagnet)))
+        context.parent ! wrap(GrabMagnet(pickedMagnet))
+        context.system.scheduler.scheduleOnce(1.second, context.parent, wrap(DragMagnet(pickedMagnet, canvas.randomPointWithin())))
+        context.system.scheduler.scheduleOnce(2.seconds, context.parent, wrap(ReleaseMagnet(pickedMagnet)))
       }
     }
   }
 
   def cancelChaos(): Unit = {
-    log.info("chaos off")
+    log.info("order has been restored")
     chaos.cancel()
   }
 
@@ -53,7 +55,7 @@ class ChaosMonkey(canvas: Square) extends Actor with ActorLogging {
       startChaos()
     case _: ClientList =>
       cancelChaos()
-    case r: Response => state = r.asAggregate.add(r)
+    case r: Response => state = state.add(r)
   }
 
 }
