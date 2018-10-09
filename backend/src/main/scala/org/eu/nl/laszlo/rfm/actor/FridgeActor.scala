@@ -65,7 +65,7 @@ class FridgeActor(clientRegistry: ActorRef, canvas: Square) extends Actor with A
 
     for {
       (char, freq) <- charFrequencies.toSet
-      id <- 1 to freq * 3
+      id <- 1 to freq
     } context.actorOf(MagnetActor.props(char, canvas, clientRegistry), Magnet.makeId(id, char))
 
     context.system.scheduler.schedule(500.milliseconds, 10.second) {
