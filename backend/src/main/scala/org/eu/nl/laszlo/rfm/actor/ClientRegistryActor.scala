@@ -36,11 +36,10 @@ class ClientRegistryActor(broadcast: ActorRef, canvas: Square) extends Actor wit
       context.become(receive(newClients))
       monkey ! ClientList(newClients)
     case ExternalRequestWrapper(name, request) =>
-      log.info("received request {} from {}", request, name)
+//      log.debug("received request {} from {}", request, name)
       context.child(name).foreach(c => fridge.tell(request, c))
     case response: Response =>
       broadcast ! response
       monkey ! response
-    case unknown => log.info("received unknown message {}", unknown)
   }
 }

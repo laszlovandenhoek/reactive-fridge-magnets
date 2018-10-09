@@ -48,8 +48,6 @@ class ConnectedClientActor(out: SourceQueueWithComplete[Response]) extends Actor
       context.become(receive)
     case r: Response =>
       context.become(queued(r.asAggregate))
-    case x =>
-      log.info(s"received unexpected $x")
   }
 
   def queued(aggregate: AggregateStateChange): Receive = {
@@ -58,8 +56,6 @@ class ConnectedClientActor(out: SourceQueueWithComplete[Response]) extends Actor
       context.become(receive)
     case r: Response =>
       context.become(queued(aggregate.add(r)))
-    case x =>
-      log.info(s"received unexpected $x")
   }
 
 }
