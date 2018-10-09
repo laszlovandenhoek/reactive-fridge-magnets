@@ -3,8 +3,8 @@ import sbt.Def
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
 lazy val akkaHttpVersion = "10.1.5"
-lazy val akkaVersion = "2.5.16"
-lazy val scalaV = "2.12.6"
+lazy val akkaVersion = "2.5.17"
+lazy val scalaV = "2.12.7"
 lazy val upickleV = "0.6.6"
 
 lazy val root = (project in file("."))
