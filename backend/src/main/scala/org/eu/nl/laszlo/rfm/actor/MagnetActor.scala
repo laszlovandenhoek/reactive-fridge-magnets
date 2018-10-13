@@ -26,6 +26,8 @@ class MagnetActor(text: String, canvas: Square, broadcast: ActorRef) extends Act
         sender(),
         context.system.scheduler.scheduleOnce(20.seconds, self, Release)(context.dispatcher, sender())
       ))
+    case Drag =>
+      log.debug("illegal drag by {} (not grabbed)", sender())
   }
 
   def grabbed(position: Point, grabber: ActorRef, releaseTimeout: Cancellable): Receive = {
@@ -39,6 +41,10 @@ class MagnetActor(text: String, canvas: Square, broadcast: ActorRef) extends Act
     case Drag(to) if sender() == grabber && canvas.contains(to) =>
       broadcast ! NewPositions(Map(magnet -> to), partial = true)
       context.become(grabbed(to, grabber, releaseTimeout))
+    case Drag(outOfBounds) if !canvas.contains(outOfBounds) =>
+      log.debug("illegal drag by {} ({} is out of bounds)", sender(), outOfBounds)
+    case _: Drag if sender() != grabber =>
+      log.debug("illegal drag by {} (grabber is {})", sender(), grabber.path.name)
   }
 
 }
