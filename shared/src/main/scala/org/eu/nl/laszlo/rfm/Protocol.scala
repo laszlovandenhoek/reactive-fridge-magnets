@@ -20,7 +20,7 @@ object Protocol {
   final case class Magnet(handle: String, text: String)
 
   object Point {
-    val origin = Point(0, 0)
+    val origin: Point = Point(0, 0)
 
     implicit def rw: RW[Point] = macroRW
 
@@ -28,9 +28,22 @@ object Protocol {
 
   }
 
-  final case class Square(origin: Point, farthest: Point) {
-    private val xRange = origin.x to farthest.x
-    private val yRange = origin.y to farthest.y
+  final case class Point(x: Int, y: Int) {
+    def isInSquare(s: Square): Boolean = s.contains(this)
+
+    def terse: String = s"$x,$y"
+  }
+
+  object Square {
+    implicit def rw: RW[Square] = macroRW
+  }
+
+  final case class Square(nearest: Point, farthest: Point) {
+    private val xRange = nearest.x to farthest.x
+    private val yRange = nearest.y to farthest.y
+
+    private val width: Int = xRange.last - xRange.head
+    private val height: Int = yRange.last - yRange.head
 
     def contains(p: Point): Boolean = {
       xRange.contains(p.x) && yRange.contains(p.y)
@@ -38,17 +51,11 @@ object Protocol {
 
     def randomPointWithin(): Point = {
       Point(
-        Random.nextInt(farthest.x - origin.x),
-        Random.nextInt(farthest.y - origin.y)
+        Random.nextInt(width),
+        Random.nextInt(height)
       )
     }
 
-  }
-
-  final case class Point(x: Int, y: Int) {
-    def isInSquare(s: Square): Boolean = s.contains(this)
-
-    def terse: String = s"$x,$y"
   }
 
   //commands
@@ -95,7 +102,7 @@ object Protocol {
   }
 
   sealed trait Request {
-    def toExternalRequestWrapper(name: String) = ExternalRequestWrapper(name, this)
+    def toExternalRequestWrapper(name: String): ExternalRequestWrapper = ExternalRequestWrapper(name, this)
   }
 
   case object GetFullState extends Request {
@@ -166,13 +173,15 @@ object Protocol {
     implicit def rw: RW[AggregateStateChange] = macroRW
   }
 
-  case class AggregateStateChange(moved: Option[NewPositions] = None,
+  case class AggregateStateChange(metadata: Option[Square] = None,
+                                  moved: Option[NewPositions] = None,
                                   grabbed: Set[MagnetGrabbed] = Set.empty,
                                   released: Set[MagnetReleased] = Set.empty) extends Response {
     override def asAggregate: AggregateStateChange = this
 
     /**
       * add the response to this AggregateStateChange
+      *
       * @param response the response to add to the current state
       * @return the new state
       */
@@ -189,12 +198,12 @@ object Protocol {
         copy(released = released + mr, grabbed = grabbed.filterNot(_.magnet == magnet))
       case mr: MagnetReleased =>
         copy(released = released + mr)
-      case AggregateStateChange(onp, g, r) =>
+      case AggregateStateChange(md, onp, g, r) =>
         AggregateStateChange(
+          md.orElse(metadata),
           onp match {
-            case np if moved.isEmpty => np
-            case None => moved
-            case Some(np) => moved.map(_.updatedWith(np.positions))
+            case Some(np) if moved.isDefined => moved.map(_.updatedWith(np.positions))
+            case _ => moved.orElse(onp)
           },
           (grabbed ++ g).filterNot(mg => r.exists(_.magnet == mg.magnet)),
           (released ++ r).filterNot(mr => g.exists(_.magnet == mr.magnet))

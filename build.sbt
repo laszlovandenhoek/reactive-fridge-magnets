@@ -2,10 +2,10 @@
 import sbt.Def
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
-lazy val akkaHttpVersion = "10.1.5"
-lazy val akkaVersion = "2.5.17"
-lazy val scalaV = "2.12.7"
-lazy val upickleV = "0.6.6"
+lazy val akkaHttpVersion = "10.2.1"
+lazy val akkaVersion = "2.6.10"
+lazy val scalaV = "2.13.4"
+lazy val upickleV = "1.2.2"
 
 lazy val root = (project in file("."))
   .settings(
@@ -24,14 +24,14 @@ lazy val backend = (project in file("backend"))
 
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
-      "de.heikoseeberger" %% "akka-http-upickle" % "1.21.1",
+      "de.heikoseeberger" %% "akka-http-upickle" % "1.35.2",
       "com.typesafe.akka" %% "akka-http-xml" % akkaHttpVersion,
       "com.typesafe.akka" %% "akka-stream" % akkaVersion,
 
       "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test,
       "com.typesafe.akka" %% "akka-testkit" % akkaVersion % Test,
       "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion % Test,
-      "org.scalatest" %% "scalatest" % "3.0.5" % Test
+      "org.scalatest" %% "scalatest" % "3.2.2" % Test
     ),
 
     //TODO: understand what this means
@@ -60,9 +60,9 @@ lazy val frontend = (project in file("frontend"))
     ),
 
     libraryDependencies ++= Seq(
-      "org.scala-js" %%% "scalajs-dom" % "0.9.6",
+      "org.scala-js" %%% "scalajs-dom" % "1.1.0",
       "com.lihaoyi" %%% "upickle" % upickleV,
-      "com.github.japgolly.scalajs-react" %%% "core" % "1.3.0",
+      "com.github.japgolly.scalajs-react" %%% "core" % "1.7.6",
     )
 
   ).dependsOn(shared.js)
@@ -76,6 +76,6 @@ lazy val shared =
 
 def commonSettings = Seq(
   scalaVersion := scalaV,
-  scalacOptions ++= Seq("-deprecation", "-feature", "-encoding", "utf8", "-Ywarn-dead-code", "-unchecked", "-Xlint", "-Ywarn-unused-import"),
+  scalacOptions ++= Seq("-deprecation", "-feature", "-encoding", "utf8", "-Ywarn-dead-code", "-unchecked", "-Xlint"),
   libraryDependencies += "com.lihaoyi" %% "upickle" % upickleV
 )

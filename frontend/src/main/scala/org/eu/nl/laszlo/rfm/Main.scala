@@ -73,7 +73,7 @@ object Main {
 
     def processResponse(r: Protocol.Response): Unit = {
       r match {
-        case Protocol.AggregateStateChange(moved, grabbed, released) =>
+        case Protocol.AggregateStateChange(meta, moved, grabbed, released) =>
           (grabbed ++ released ++ moved.toSet).foreach(processResponse)
         case Protocol.NewPositions(positions, partial) =>
           console.info(if (partial) "updated positions" else "new positions", positions.map({ case (m, p) => s"${m.handle} -> ${p.terse}" }).toString)

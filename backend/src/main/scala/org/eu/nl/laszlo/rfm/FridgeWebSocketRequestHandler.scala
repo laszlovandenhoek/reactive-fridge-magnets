@@ -1,12 +1,11 @@
 package org.eu.nl.laszlo.rfm
 
-import akka.{Done, NotUsed}
 import akka.actor.{ActorRef, ActorSystem, PoisonPill}
-import akka.event.Logging
 import akka.http.scaladsl.model.ws.{BinaryMessage, Message, TextMessage}
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.stream._
 import akka.stream.scaladsl.{BroadcastHub, Concat, Flow, GraphDSL, Keep, MergeHub, Sink, Source, SourceQueueWithComplete}
+import akka.{Done, NotUsed}
 import de.heikoseeberger.akkahttpupickle.UpickleSupport
 import org.eu.nl.laszlo.rfm.Protocol.{ExternalRequestWrapper, Point, Response, Square}
 import org.eu.nl.laszlo.rfm.actor.ClientRegistryActor
@@ -22,10 +21,6 @@ trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
   implicit def system: ActorSystem
 
   implicit def executionContext: ExecutionContext
-
-  implicit def materializer: Materializer
-
-  lazy val log = Logging(system, classOf[FridgeWebSocketRequestHandler])
 
   private lazy final val canvas: Square = Square(Point.origin, Point(1280, 720))
 
@@ -69,7 +64,7 @@ trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
         path("frontend-fastopt-bundle.js")(getFromResource("frontend-fastopt-bundle.js")) ~
         // the websocket
         path("rfm") {
-          parameter('name) { name =>
+          parameter(Symbol("name")) { name =>
             val (queue: SourceQueueWithComplete[Response], queueSource: Source[Response, NotUsed]) =
               Source.queue[Response](128, OverflowStrategy.fail).preMaterialize()
 

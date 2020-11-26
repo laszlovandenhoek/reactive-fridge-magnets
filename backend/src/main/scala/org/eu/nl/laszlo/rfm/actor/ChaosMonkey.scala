@@ -24,7 +24,7 @@ class ChaosMonkey(canvas: Square) extends Actor with ActorLogging {
 
   def randomItem[T](it: Iterable[T]): Option[T] = {
     val i = Random.nextInt(it.size)
-    it.view(i, i + 1).headOption
+    it.slice(i, i + 1).headOption
   }
 
   private def wrap(request: Request) = request.toExternalRequestWrapper(ChaosMonkey.name)
@@ -32,13 +32,13 @@ class ChaosMonkey(canvas: Square) extends Actor with ActorLogging {
   def startChaos(): Unit = {
     log.info("it's chaos!")
     implicit val dispatcher: ExecutionContext = context.dispatcher
-    chaos = context.system.scheduler.schedule(4.seconds, 4.seconds) {
+    chaos = context.system.scheduler.scheduleWithFixedDelay(4.seconds, 4.seconds)(() => {
       state.moved.map(_.positions.keys).flatMap(randomItem).map(_.handle).foreach { pickedMagnet =>
         context.parent ! wrap(GrabMagnet(pickedMagnet))
         context.system.scheduler.scheduleOnce(1.second, context.parent, wrap(DragMagnet(pickedMagnet, canvas.randomPointWithin())))
         context.system.scheduler.scheduleOnce(2.seconds, context.parent, wrap(ReleaseMagnet(pickedMagnet)))
       }
-    }
+    })
   }
 
   def cancelChaos(): Unit = {
