@@ -103,6 +103,7 @@ object Main {
       }
 
       newP.ondrag = { event: DragEvent =>
+        console.info("ondrag event", event)
         val point = Point(event.pageX.toInt - 24, event.pageY.toInt - 24)
         console.info("ondrag", magnet.handle, point.terse)
         //TODO: debounce moves

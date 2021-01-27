@@ -53,9 +53,12 @@ lazy val frontend = (project in file("frontend"))
 
     scalaJSUseMainModuleInitializer := true,
 
+    scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule) },
+
     npmDependencies in Compile ++= Seq(
       "react" -> "16.5.1",
       "react-dom" -> "16.5.1",
+      "draggabilly" -> "2.3.0"
 //      "normalize.css" -> "8.0.0"
     ),
 
