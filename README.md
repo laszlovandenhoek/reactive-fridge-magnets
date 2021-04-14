@@ -6,4 +6,14 @@ There are many clones on GitHub, but most of them involve NodeJS, and none that 
 
 This project aims to achieve this on the JVM, using Akka. The connection to the frontend could be RSocket, maybe? Just plain JSON over WebSocket for 1.0.
 
-frontend build would be nice to have NPM.
+# Running
+
+- Install a JDK and sbt (Easy using SDKMAN)
+- Install NPM (Easy using `nvm`)
+- `sbt backend/run`
+
+After the build is done, you can access the application at:
+
+[http://localhost:8080]
+
+While only one "player" is connected, an automated "Chaos Monkey" will start moving letters around at random.

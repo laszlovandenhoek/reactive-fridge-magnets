@@ -57,7 +57,7 @@ object FridgeActor {
 
 }
 
-class FridgeActor(clientRegistry: ActorRef, canvas: Square) extends Actor with ActorLogging {
+class FridgeActor(clientRegistry: ActorRef, canvas: Square) extends Actor with ActorLogging  {
 
   import FridgeActor._
 
@@ -68,8 +68,8 @@ class FridgeActor(clientRegistry: ActorRef, canvas: Square) extends Actor with A
       id <- 1 to freq
     } context.actorOf(MagnetActor.props(char, canvas, clientRegistry), Magnet.makeId(id, char))
 
-    context.system.scheduler.schedule(500.milliseconds, 10.second) {
-      self.tell(GetFullState, clientRegistry)
+    context.system.scheduler.scheduleWithFixedDelay(500.milliseconds, 10.second) {
+      () => self.tell(GetFullState, clientRegistry)
     }(context.dispatcher)
 
   }
