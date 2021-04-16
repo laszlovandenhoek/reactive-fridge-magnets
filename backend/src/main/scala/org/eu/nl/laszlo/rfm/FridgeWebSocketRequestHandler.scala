@@ -66,7 +66,7 @@ trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
         path("rfm") {
           parameter(Symbol("name")) { name =>
             val (queue: SourceQueueWithComplete[Response], queueSource: Source[Response, NotUsed]) =
-              Source.queue[Response](128, OverflowStrategy.fail).preMaterialize()
+              Source.queue[Response](4096, OverflowStrategy.dropHead).preMaterialize()
 
             val (done: Future[Done], in: Sink[Message, NotUsed]) =
               Flow[Message].mapAsync(1)(wsToInternalProtocol(name))
