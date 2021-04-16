@@ -9,11 +9,11 @@ This project aims to achieve this on the JVM, using Akka. The connection to the 
 # Running
 
 - Install a JDK and sbt (Easy using SDKMAN)
-- Install NPM (Easy using `nvm`)
+- Install NPM (Easy using `nvm`: `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash`)
 - `sbt backend/run`
 
 After the build is done, you can access the application at:
 
-[http://localhost:8080]
+http://localhost:8080
 
 While only one "player" is connected, an automated "Chaos Monkey" will start moving letters around at random.
