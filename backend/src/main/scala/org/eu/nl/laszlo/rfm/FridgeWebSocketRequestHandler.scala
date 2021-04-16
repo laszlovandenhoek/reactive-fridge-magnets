@@ -27,7 +27,7 @@ trait FridgeWebSocketRequestHandler extends UpickleSupport with Directives {
   def route: Route = {
 
     val (outActor: ActorRef, fridgeBroadcast: Source[Response, NotUsed]) =
-      Source.actorRef[Protocol.Response](128, OverflowStrategy.fail)
+      Source.actorRef[Protocol.Response](128, OverflowStrategy.dropHead)
         .toMat(BroadcastHub.sink(1))(Keep.both)
         .run()
 
