@@ -1,6 +1,6 @@
 package org.eu.nl.laszlo.rfm.actor
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, Props, Timers}
 import org.eu.nl.laszlo.rfm.Protocol._
 import org.eu.nl.laszlo.rfm.actor.ChaosMonkey.ClientList
 
@@ -17,7 +17,7 @@ object ChaosMonkey {
 
 }
 
-class ChaosMonkey(canvas: Square) extends Actor with ActorLogging {
+class ChaosMonkey(canvas: Square) extends Actor with ActorLogging with Timers {
 
   private var chaos: Cancellable = Cancellable.alreadyCancelled
   private var state: AggregateStateChange = AggregateStateChange()
@@ -53,7 +53,8 @@ class ChaosMonkey(canvas: Square) extends Actor with ActorLogging {
   override def receive: Receive = {
     case ClientList(clients) if clients.size == 1 =>
       startChaos()
-    case _: ClientList =>
+      this.timers.startSingleTimer("boredom", "meh", 1.minute)
+    case _: ClientList | "meh" =>
       cancelChaos()
     case r: Response => state = state.add(r)
   }
