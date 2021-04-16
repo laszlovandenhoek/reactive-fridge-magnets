@@ -35,11 +35,11 @@ lazy val backend = (project in file("backend"))
     ),
 
     //TODO: understand what this means
-    resourceGenerators in Compile += Def.task {
-      (webpack in(frontend, Compile, fastOptJS in frontend)).value.map(_.data)
+    Compile / resourceGenerators += Def.task {
+      (webpack in (frontend, Compile, frontend / fastOptJS)).value.map(_.data)
     }.taskValue,
 
-    watchSources ++= (watchSources in frontend).value
+    watchSources ++= (frontend / watchSources).value
 
   )
   .dependsOn(shared.jvm)
@@ -53,10 +53,10 @@ lazy val frontend = (project in file("frontend"))
 
     scalaJSUseMainModuleInitializer := true,
 
-    npmDependencies in Compile ++= Seq(
+    Compile / npmDependencies ++= Seq(
       "react" -> "16.5.1",
       "react-dom" -> "16.5.1",
-//      "normalize.css" -> "8.0.0"
+      //      "normalize.css" -> "8.0.0"
     ),
 
     libraryDependencies ++= Seq(
